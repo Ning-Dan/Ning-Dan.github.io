@@ -1,0 +1,54 @@
+[site]
+title = "Robotics Notebook"
+description = "一名匿名的 model-based 运动控制算法工程师的技术网站：系统学习 VLA、世界模型与具身智能，并用可验证实验连接真实机器人。"
+favicon = "/favicon.svg"
+last_updated = "2026-08-08"
+
+[author]
+name = "Robotics Notebook"
+title = "Model-based 运动控制算法工程师"
+institution = "Motion Control · VLA · Embodied Intelligence"
+avatar = "/favicon.svg"
+
+[social]
+# 隐私优先：暂不公开姓名、邮箱、单位、地点或社交账号。
+
+[features]
+enable_likes = false
+enable_one_page_mode = false
+
+[i18n]
+enabled = false
+locales = ["zh"]
+default_locale = "zh"
+mode = "fixed"
+fixed_locale = "zh"
+persist = false
+switcher = false
+
+[i18n.labels]
+zh = "中文"
+
+[[navigation]]
+title = "首页"
+type = "link"
+target = "home"
+href = "/"
+
+[[navigation]]
+title = "学习"
+type = "link"
+target = "learning"
+href = "/learning"
+
+[[navigation]]
+title = "项目"
+type = "link"
+target = "projects"
+href = "/projects"
+
+[[navigation]]
+title = "关于"
+type = "link"
+target = "about"
+href = "/about"
