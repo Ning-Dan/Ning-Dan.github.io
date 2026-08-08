@@ -327,6 +327,7 @@ export const lessonContent: Record<string, LessonDetail> = {
       { title: "DAgger", url: "https://proceedings.mlr.press/v15/ross11a.html", role: "分布偏移与数据聚合原始论文" },
       { title: "MIT Underactuated · Imitation Learning", url: "https://underactuated.mit.edu/imitation.html", role: "BC、状态分布与模仿学习理论" },
       { title: "A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning", url: "https://arxiv.org/abs/1011.0686", role: "DAgger 理论推导" },
+      { title: "PyTorch / TorchRL VLA Tutorial", url: "https://docs.pytorch.org/rl/main/tutorials/vla.html", role: "CPU 可运行的 chunked BC 与确切输出参考" },
     ],
   },
 
@@ -468,7 +469,7 @@ export const lessonContent: Record<string, LessonDetail> = {
     practice: { title: "时间戳 + 延迟队列 + controlled stop", summary: "标准库脚本模拟网络到达堆、绝对 observation_time、TTL、乱序结果、动作限幅与 p99 reserve。", prerequisites: ["Python 3.10+，无需第三方库。", "先手算 H=8,E=2,dt=0.05s 的覆盖与刷新时间。"], steps: ["运行 python public/labs/chunked_controller.py，核对 p99=220ms、reserve=5。", "沿 ActionChunk→DelayedNetwork→SafeExecutor 标出 request、arrival、execute 三种时间。", "把 latency=.04 改为 .20，观察 chunk 因 TTL 被拒或执行层 hold。", "交换新旧 observation_time，确认迟到旧结果不能覆盖新 chunk。", "把 target 改为大跳变和 NaN，分别观察 max_step 限幅与 finite 拒绝。", "分别设 E=1/2/8 画出请求频率；说明脚本为何只验证队列机制而非策略质量。"], expected: ["【本地已确认】p99=220ms，50ms/action 和 30ms margin 下 reserve=5。", "动作经 0.08 限幅得到 [0.08,0.16,0.24]；TTL 后保持 0.24。", "乱序/过期计数为1，controlled stop 为1，NaN 检查 PASS。"], acceptance: ["所有 chunk 带 request_id、observation_time、dt，且有限值/shape 可验证。", "过期或乱序结果绝不重放；队列欠载进入明确 controlled stop。", "能从延迟样本手算 p99 reserve，并说明平均延迟不足。", "能解释 E、H 与闭环性的关系以及重叠平均风险。"], debugging: ["状态偶尔倒退：打印 chunk/request_id/index/absolute time，查是否旧 chunk 覆盖新 chunk。", "队列总欠载：对比 p99 总延迟与剩余覆盖时间，不要只看 mean。", "TTL 全部触发：检查客户端/服务端时钟基准与单位 s/ms。", "动作跳变：检查新 chunk 起点是否对应当前状态、command type 是否 absolute/delta。", "停止后仍运动：hold 不是所有控制器的安全停止；真机需独立 watchdog/制动接口。"], status: "已验证", code: "python public/labs/chunked_controller.py" },
     pitfalls: ["aₜ:ₜ₊H 闭区间歧义", "改 fps 不改 dt", "二值 gripper 直接平均", "新 chunk 从 0 执行"],
     review: ["H=50,E=5,20Hz 的反应间隔？", "多峰策略为何不宜平均？", "异步时间语义差在哪？"], completion: "实现带时间戳、过期检测、限幅和受控停止的 action queue。",
-    sources: [{ title: "ACT", url: "https://arxiv.org/abs/2304.13705", role: "chunking" }, { title: "RTC", url: "https://www.pi.website/research/real_time_chunking", role: "异步连续性" }], visual: "latency",
+    sources: [{ title: "ACT", url: "https://arxiv.org/abs/2304.13705", role: "chunking" }, { title: "RTC", url: "https://www.pi.website/research/real_time_chunking", role: "异步连续性" }, { title: "PyTorch / TorchRL VLA Tutorial", url: "https://docs.pytorch.org/rl/main/tutorials/vla.html", role: "动作块、归一化与 receding-horizon 可运行参考" }], visual: "latency",
   },
 
   "diffusion-policy": {

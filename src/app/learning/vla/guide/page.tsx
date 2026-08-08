@@ -50,10 +50,17 @@ const gates = [
 ];
 
 const rhythm = [
-  ["01 · 看专属时间表", "每章工作量不同；先看该章的建议预算、活动与可检查产出，不套统一时长。"],
-  ["02 · 按标识学原理", "了解章建立索引，必修章解释机制，手推章逐项核对 shape、frame、unit 与时间含义。"],
-  ["03 · 完成对应实验", "按页面运行入口逐步操作，先核对预期输出，再主动制造一个失败并使用排错表。"],
-  ["04 · 做证据复盘", "把已确认事实、合理推测、个人观点与暂无法验证的信息分开，再完成自测和交付物。"],
+  ["01 · 从一个具体样本开始", "先看清输入、目标输出和 shape；不先背整章术语，也不让你自己猜实验对象。"],
+  ["02 · 手算后立即输入代码", "页面明确告诉你打开哪里、输入哪段、运行哪条命令，以及每一段代码为什么存在。"],
+  ["03 · 对照输出并故意改错", "每一步都有确切的预期现象和解释；随后只改一个变量，观察失败并按提示修复。"],
+  ["04 · 带答案复盘与迁移", "通过检查点后再继续；最后展开参考答案，并把 Toy 中的字段逐项映射到真实 VLA。"],
+];
+
+const tutorialReferences = [
+  ["PyTorch / TorchRL VLA Tutorial", "CPU 可运行的合成数据、逐单元输出、TinyVLA、BC、chunk 执行与下载 Notebook；本课程采用其‘代码后立刻解释输出’的组织方式。", "https://docs.pytorch.org/rl/main/tutorials/vla.html"],
+  ["Hugging Face LeRobot Workflow", "从记录、可视化、回放到训练和评估的完整工作流；本课程采用其‘一个产物接到下一个产物’的闭环方式。", "https://huggingface.co/docs/lerobot/main/getting_started_real_world_robot"],
+  ["Robot Learning: A Tutorial", "把生成模型、ACT、Diffusion、异步推理和 VLA 原理与完整代码并排呈现；用于校准理论覆盖范围。", "https://github.com/fracapuano/robot-learning-tutorial"],
+  ["Physical Intelligence openpi", "数据转换、配置、归一化、训练、policy server 与评估的真实工程路径；只作为版本敏感的进阶实践，不冒充零门槛教程。", "https://github.com/Physical-Intelligence/openpi"],
 ];
 
 const studyLevels = [
@@ -101,6 +108,19 @@ export default function VlaGuidePage() {
         <p className="eyebrow">Mastery gates</p>
         <h2>通过验收，再进入下一阶段</h2>
         <div className="source-list">{gates.map(([title, body]) => <article className="source-card guide-gate" key={title}><span>{title}</span><strong>{body}</strong></article>)}</div>
+      </section>
+
+      <section className="lesson-section">
+        <p className="eyebrow">Tutorial design audit · 2026-08-08</p>
+        <h2>这套带练结构参考了什么，也没有照搬什么</h2>
+        <p>下面是已核对的公开课程或官方工程文档。它们各自解决一部分问题；本站把“可运行 Toy、原理推导、真实工作流和证据边界”接成同一条学习路径。</p>
+        <div className="source-list">
+          {tutorialReferences.map(([title, body, url]) => (
+            <a href={url} target="_blank" rel="noreferrer" key={title}>
+              <span>已核对来源</span><strong>{title} ↗</strong><p>{body}</p>
+            </a>
+          ))}
+        </div>
       </section>
 
       <section className="lesson-section" style={{ paddingBottom: 96 }}>

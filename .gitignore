@@ -1,6 +1,8 @@
 node_modules/
 .next/
 out/
+work/
+learning-notes/
 next-env.d.ts
 __pycache__/
 *.pyc
