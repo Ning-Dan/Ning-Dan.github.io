@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "学习中心", description: "VLA、�
 
 const tracks = [
   { status: "ACTIVE · 14 CHAPTERS", title: "Vision-Language-Action", subtitle: "从控制工程师的视角理解 VLA", description: "发展史、Transformer 与动作表示、Diffusion / Flow、π₀.₅、世界模型、数据、评估和控制系统集成。", href: "/learning/vla", cta: "进入完整课程 →", className: "active" },
-  { status: "NEXT TRACK", title: "Visual Perception", subtitle: "为机器人建立可靠的视觉状态", description: "计划覆盖标定、几何视觉、检测分割、6D 位姿估计、3D 表征、视觉伺服与感知不确定性。", href: "/learning#roadmap", cta: "查看预留结构", className: "planned" },
+  { status: "ACTIVE · 1 TUTORIAL", title: "Visual Perception", subtitle: "为机器人建立可靠的视觉状态", description: "从 RGBD 成像、标定与点云开始，贯通检测分割、经典几何法、学习法 6D 位姿估计、ICP 精配准与机器人抓取闭环。", href: "/learning/visual-perception", cta: "进入 6D 位姿教程 →", className: "visual" },
   { status: "FOUNDATION", title: "Model-based Control", subtitle: "把已有经验整理成可复用知识", description: "动力学、轨迹优化、MPC、阻抗控制、WBC 与安全约束，将作为连接学习策略和真实机器人的基础层。", href: "/learning#roadmap", cta: "规划中", className: "foundation" },
 ];
 

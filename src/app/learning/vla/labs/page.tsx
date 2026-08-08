@@ -6,7 +6,7 @@ const labs = [
   ["L0", "纯 Python 小实验", "本机直接运行", "动作量化、行为克隆、chunk 执行、1D flow matching"],
   ["L1", "LeRobot + ACT", "4060 Ti 8GB", "隔离环境中检查数据、训练小策略并完成仿真回放"],
   ["L2", "SmolVLA / LIBERO", "8GB 推理边界", "先做 smoke test；小 batch 训练属于探索项，不承诺稳定"],
-  ["L3", "π₀.₅ / OpenVLA-OFT / GR00T", "云 GPU", "16GB+ 推理，24–80GB 级微调；远程策略服务接入控制栈"],
+  ["L3", "π₀.₅ / OpenVLA-OFT / GR00T", "Linux 云 GPU", "openpi 官方边界：推理 >8GB、LoRA >22.5GB、全量微调 >70GB；通过远程策略服务接入控制栈"],
 ];
 
 export default function LabsPage() {

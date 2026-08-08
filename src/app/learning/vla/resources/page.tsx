@@ -5,6 +5,7 @@ export const metadata: Metadata = { title: "VLA 资料与审校", description: "
 const sources = [
   ["Hugging Face Robotics Course", "课程骨架清楚、LeRobot 导向明确；未发布单元不冒充已完成内容。", "https://huggingface.co/learn/robotics-course/unit0/1"],
   ["Robot Learning: A Tutorial", "2025 年系统教程，覆盖 BC、RL 与 generalist policy，并提供 LeRobot 示例；用作理论广度基线。", "https://arxiv.org/abs/2510.12403"],
+  ["LeRobot Documentation", "数据、策略、训练、评测和异步推理的维护中接口；命令以锁定 release/commit 的文档为准。", "https://huggingface.co/docs/lerobot/index"],
   ["LeRobot", "数据格式、ACT/SmolVLA 等策略与训练入口的工程主线；实际实验需固定版本。", "https://github.com/huggingface/lerobot"],
   ["OpenVLA", "动作 token、LoRA、LIBERO 评估和服务化接口的重要公开实现。", "https://github.com/openvla/openvla"],
   ["openpi", "π₀ / π₀.₅、连续 action expert、LeRobot 数据转换与远程推理的官方实现。", "https://github.com/Physical-Intelligence/openpi"],
@@ -12,6 +13,7 @@ const sources = [
   ["Real-Time Chunking", "动作块异步实时执行：固定已承诺前缀并对剩余动作做生成式 inpainting。", "https://www.pi.website/research/real_time_chunking"],
   ["FAST", "DCT + 量化 + BPE 压缩高频动作序列，解释动作 token 从朴素 binning 到时序压缩的变化。", "https://www.pi.website/research/fast"],
   ["Isaac GR00T", "大模型 VLA 的端到端训练与部署参考；高算力进阶路线，不作为 8GB 入门主线。", "https://github.com/NVIDIA/Isaac-GR00T"],
+  ["X-VLA", "用 domain/soft prompt 处理机器人、动作维度和相机配置异质性的当前案例。", "https://huggingface.co/docs/lerobot/xvla"],
 ];
 
 export default function ResourcesPage() {

@@ -10,6 +10,13 @@ export type CourseModule = {
   outcome: string;
 };
 
+export const studyGuidance: Record<CourseModule["level"], { label: string; instruction: string; tone: string }> = {
+  印象: { label: "了解即可", instruction: "建立时间线与全局位置感，能说出它解决什么问题；不要求记住模型细节。", tone: "overview" },
+  重点: { label: "必须掌握", instruction: "放慢速度，合上页面后能解释机制、画出数据流，并说清适用边界。", tone: "mastery" },
+  手推: { label: "慢推 + 动手", instruction: "公式逐项核对 shape、frame、unit 与时间含义；本章实验必须亲手运行并制造一次失败。", tone: "derive" },
+  综合: { label: "综合验收", instruction: "不要停在阅读；用数据、baseline、rollout、失败归因和可复现交付证明掌握。", tone: "integrate" },
+};
+
 export const modules: CourseModule[] = [
   { index: 0, slug: "control-to-vla", phase: "桥接", title: "从控制律到条件策略", subtitle: "用闭环、状态与滚动时域重画 VLA 地图", hours: "2.5h", level: "重点", tags: ["闭环", "策略", "POMDP"], outcome: "能解释 VLA 放在机器人控制栈的哪一层，以及它不该替代什么。" },
   { index: 1, slug: "history", phase: "桥接", title: "VLA 为什么诞生", subtitle: "从单任务模仿到跨任务、跨场景的视觉语言动作模型", hours: "3h", level: "印象", tags: ["History", "RT-2", "Bottleneck"], outcome: "能沿时间线解释每一代方法解决了什么，以及为什么仍然不够。" },
