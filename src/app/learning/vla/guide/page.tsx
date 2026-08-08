@@ -15,7 +15,7 @@ const routes = [
   {
     id: "STANDARD · 12 WEEKS",
     title: "完整路线",
-    body: "推荐路线。逐章完成公式、自测与实验，再用 2–4 周毕业项目把数据、baseline、VLA、评测和部署接口连起来。",
+    body: "推荐路线。逐章完成公式、自测与实验，再用 3–5 周毕业项目把数据、baseline、VLA、评测和部署接口连起来。",
   },
   {
     id: "ENGINEER · 16–20 WEEKS",
@@ -42,7 +42,7 @@ const schedule = [
 ];
 
 const gates = [
-  ["GATE A · 会训练", "32 个样本能过拟合；打乱语言或遮挡图像后性能按预期下降；能解释 train loss 不等于 rollout。"],
+  ["GATE A · 会训练", "小数据能过拟合；条件置换后性能按预期下降；能实际复现 train loss 正常但闭环 rollout 失败。"],
   ["GATE B · 会定义动作", "能写出 action contract，声明 frame、unit、dt、mask 和逆变换；chunk 队列不重放过期动作。"],
   ["GATE C · 会读模型", "拿到任意 VLA 图，能指出视觉/语言/状态入口、动作 head、训练目标、推理过程和部署频率。"],
   ["GATE D · 会做实验", "同一数据和安全协议下比较 ACT 与 VLA；报告成功率、样本数、p99 延迟和失败类型。"],
@@ -50,10 +50,10 @@ const gates = [
 ];
 
 const rhythm = [
-  ["01 · 预检 20 分钟", "先闭卷回答本章自测，标出真正不会的概念。"],
-  ["02 · 原理 90 分钟", "读直觉、公式和符号；必须能解释每个量的 shape、frame、unit 与时间含义。"],
-  ["03 · 实验 2–4 小时", "先跑最小样例，再主动制造一个失败；保留配置、seed、日志和验收结果。"],
-  ["04 · 复盘 30 分钟", "合上页面重画系统图，回答自测，并写下一条仍不确定的结论。"],
+  ["01 · 看专属时间表", "每章工作量不同；先看该章的建议预算、活动与可检查产出，不套统一时长。"],
+  ["02 · 按标识学原理", "了解章建立索引，必修章解释机制，手推章逐项核对 shape、frame、unit 与时间含义。"],
+  ["03 · 完成对应实验", "按页面运行入口逐步操作，先核对预期输出，再主动制造一个失败并使用排错表。"],
+  ["04 · 做证据复盘", "把已确认事实、合理推测、个人观点与暂无法验证的信息分开，再完成自测和交付物。"],
 ];
 
 const studyLevels = [
@@ -93,7 +93,7 @@ export default function VlaGuidePage() {
 
       <section className="lesson-section">
         <p className="eyebrow">Recommended pace</p>
-        <h2>12 周主线 + 2–4 周毕业项目</h2>
+        <h2>12 周主线 + 3–5 周毕业项目</h2>
         <div className="module-grid">{schedule.map(([week, title, body]) => <article className="module-card" key={week}><div className="module-meta"><span>{week}</span><span>6–8h</span></div><h3>{title}</h3><p>{body}</p></article>)}</div>
       </section>
 
@@ -105,7 +105,7 @@ export default function VlaGuidePage() {
 
       <section className="lesson-section" style={{ paddingBottom: 96 }}>
         <p className="eyebrow">One chapter loop</p>
-        <h2>每章都按同一个闭环学习</h2>
+        <h2>同一验收逻辑，不套同一时间模板</h2>
         <div className="roadmap-flow">{rhythm.map(([title, body]) => <div key={title}><span>{title.split(" · ")[0]}</span><strong>{title.split(" · ")[1]}</strong><small>{body}</small></div>)}</div>
       </section>
     </div>

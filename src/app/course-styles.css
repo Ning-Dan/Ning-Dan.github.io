@@ -498,6 +498,14 @@ input {
   color: var(--ink);
 }
 
+.lesson-toc .toc-sub {
+  padding: 4px 8px 4px 18px;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .lesson-main {
   min-width: 0;
 }
@@ -529,6 +537,76 @@ input {
 .lesson-section ul,
 .lesson-section ol {
   padding-left: 22px;
+}
+
+.objective-list {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 28px;
+}
+
+.time-plan {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.time-plan article {
+  display: grid;
+  grid-template-columns: 86px 1fr;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 253, 248, .76);
+}
+
+.time-plan article > span {
+  width: fit-content;
+  height: fit-content;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: var(--yellow);
+  font: 800 11px var(--font-geist-mono), monospace;
+}
+
+.time-plan h3 {
+  margin: 0 0 5px;
+  font-size: 17px;
+}
+
+.time-plan p { margin: 0; font-size: 14px; }
+.time-plan small { display: block; margin-top: 8px; color: var(--blue); font-weight: 700; }
+
+.deep-dive {
+  scroll-margin-top: 92px;
+  margin-top: 32px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.key-takeaways,
+.practice-block {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: #f5f4ec;
+}
+
+.key-takeaways strong,
+.practice-block h4 {
+  display: block;
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.key-takeaways ul,
+.practice-block ul { margin: 0; }
+
+.debugging-block {
+  border-left: 3px solid #b94b38;
+  background: #fff4ed;
 }
 
 .math-card {
@@ -788,7 +866,8 @@ input {
   margin-bottom: 34px;
 }
 
-.source-list a {
+.source-list a,
+.source-list .source-card {
   display: flex;
   min-height: 86px;
   flex-direction: column;
@@ -1008,6 +1087,7 @@ input {
   .pipeline-block:not(:last-child)::after { content: "↓"; right: 50%; bottom: -27px; top: auto; }
   .lesson-toc { grid-template-columns: 1fr 1fr; }
   .practice-columns, .pitfall-grid, .source-list { grid-template-columns: 1fr; }
+  .time-plan article { grid-template-columns: 1fr; gap: 10px; }
   .timeline, .compare-flow, .world-loop { grid-template-columns: 1fr; }
   .compare-flow > div:not(:last-child)::after, .world-loop > div:not(:last-child)::after { content: "↓"; right: 50%; bottom: -23px; top: auto; }
   .pi05-flow { grid-template-columns: 1fr; }
@@ -1285,6 +1365,7 @@ input {
   background: #f5f8fa;
   box-shadow: 8px 8px 0 var(--ink);
 }
+.source-list .source-card p { margin: 8px 0 0; font-size: 13px; line-height: 1.55; }
 .visual-tutorial-frame {
   display: block;
   width: 100%;

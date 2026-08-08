@@ -2,21 +2,21 @@
 
 import { useEffect, useState } from "react";
 
-export function ProgressButton({ slug }: { slug: string }) {
+export function ProgressButton({ slug, course = "vla" }: { slug: string; course?: string }) {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      setDone(window.localStorage.getItem(`vla-progress:${slug}`) === "done");
+      setDone(window.localStorage.getItem(`${course}-progress:${slug}`) === "done");
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [slug]);
+  }, [course, slug]);
 
   function toggle() {
     const next = !done;
     setDone(next);
-    if (next) window.localStorage.setItem(`vla-progress:${slug}`, "done");
-    else window.localStorage.removeItem(`vla-progress:${slug}`);
+    if (next) window.localStorage.setItem(`${course}-progress:${slug}`, "done");
+    else window.localStorage.removeItem(`${course}-progress:${slug}`);
   }
 
   return (
