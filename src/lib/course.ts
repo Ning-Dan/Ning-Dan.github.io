@@ -31,7 +31,11 @@ export const modules: CourseModule[] = [
   { index: 10, slug: "vla-families", phase: "系统", title: "VLA 架构谱系与选型", subtitle: "OpenVLA/OFT、SmolVLA、Octo、GR00T 的关键取舍", hours: "3h", level: "重点", tags: ["Architecture", "OpenVLA", "GR00T"], outcome: "按数据、算力、频率、动作精度和开源程度选择基线。" },
   { index: 11, slug: "world-models", phase: "前沿", title: "VLA × 世界模型", subtitle: "反应式策略、未来预测、规划与联合训练的边界", hours: "5h", level: "重点", tags: ["World Model", "Planning", "Long Horizon"], outcome: "能区分 policy 与 dynamics model，并设计 VLA+world model 的组合架构。" },
   { index: 12, slug: "frontier-and-deployment", phase: "前沿", title: "前沿方向与实时部署", subtitle: "RTC、推理时计算、3D/触觉、人类视频与安全系统", hours: "7h", level: "综合", tags: ["RTC", "3D", "Safety"], outcome: "能按“改进—证据—缺陷”读新论文，并搭出 VLA→安全过滤→低层控制闭环。" },
-  { index: 13, slug: "capstone", phase: "实战", title: "毕业项目：语言驱动操作", subtitle: "从 LIBERO/Isaac Lab 到自己的机械臂任务", hours: "25–40h", level: "综合", tags: ["LIBERO", "Isaac Lab", "Report"], outcome: "交付数据、ACT baseline、VLA、评估、部署接口与失败复盘的完整工程包。" },
+  { index: 13, slug: "math-foundations", phase: "桥接", title: "VLA 数学地基", subtitle: "从 NLL、KL 到 advantage、policy gradient 与 ODE", hours: "5h", level: "手推", tags: ["Probability", "RL", "ODE"], outcome: "能从统一符号表推导 VLA 训练、生成与后训练中反复出现的核心公式。" },
+  { index: 14, slug: "act-cvae", phase: "核心", title: "ACT 与 CVAE", subtitle: "动作块、潜变量、ELBO 与 temporal ensemble 的完整桥梁", hours: "5h", level: "手推", tags: ["ACT", "CVAE", "Temporal Ensemble"], outcome: "能解释并实现 ACT 的训练/推理信息流，而不只把 ACT 当成一个 baseline 名称。" },
+  { index: 15, slug: "post-training", phase: "系统", title: "VLA 后训练与数据闭环", subtitle: "从纠错 SFT、DAgger 到 reward model、offline/online RL", hours: "7h", level: "综合", tags: ["HIL", "DAgger", "RL"], outcome: "能根据基础策略成功率、奖励可信度和安全条件选择后训练方法，并设计不会污染测试集的数据闭环。" },
+  { index: 16, slug: "mobile-dual-arm-pi-deployment", phase: "实战", title: "π₀.₅ × Thor 双臂移动机器人部署", subtitle: "双臂、双自由度腰部、移动底盘与 Jetson AGX Thor 的 22 步实操", hours: "30–60h + 采集/训练墙钟", level: "综合", tags: ["π0.5", "Jetson Thor", "Whole-body"], outcome: "交付可审计的全身 action contract、openpi 适配、Thor 性能报告、分级真机灰度与后训练闭环。" },
+  { index: 17, slug: "capstone", phase: "实战", title: "毕业项目：语言驱动操作", subtitle: "从 LIBERO/Isaac Lab 到自己的机械臂任务", hours: "25–40h", level: "综合", tags: ["LIBERO", "Isaac Lab", "Report"], outcome: "交付数据、ACT baseline、VLA、评估、部署接口与失败复盘的完整工程包。" },
 ];
 
 export const getModule = (slug: string) => modules.find((item) => item.slug === slug);

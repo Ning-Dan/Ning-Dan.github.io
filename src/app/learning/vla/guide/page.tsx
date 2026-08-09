@@ -3,24 +3,24 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "VLA 学习指南",
-  description: "VLA 教程的先修诊断、分层路线、12 周学习节奏、阶段验收与闭环学习方法。",
+  description: "VLA 教程的先修诊断、分层路线、16 周学习节奏、阶段验收与 Thor 双臂部署路径。",
 };
 
 const routes = [
   {
-    id: "CORE · 8 WEEKS",
+    id: "CORE · 10 WEEKS",
     title: "关键主线",
-    body: "适合先建立可靠骨架。重点完成 0、2–7、9–10 章和一个 ACT/SmolVLA 小闭环；历史与前沿章节先建立索引。",
+    body: "适合先建立可靠骨架。按知识地图完成控制、数学、BC、ACT、Transformer、动作表示、chunk、diffusion/flow 与数据闭环；历史和前沿先建立索引。",
   },
   {
-    id: "STANDARD · 12 WEEKS",
+    id: "STANDARD · 16 WEEKS",
     title: "完整路线",
-    body: "推荐路线。逐章完成公式、自测与实验，再用 3–5 周毕业项目把数据、baseline、VLA、评测和部署接口连起来。",
+    body: "推荐路线。逐章完成公式、自测与实验，并补后训练；再用 3–5 周毕业项目把数据、baseline、VLA、评测和部署接口连起来。",
   },
   {
-    id: "ENGINEER · 16–20 WEEKS",
+    id: "ENGINEER · 20–28 WEEKS",
     title: "工程深挖",
-    body: "在完整路线后复现一个官方模型配方，补齐延迟、失败归因、扰动评测与真机安全层，形成可复现工程报告。",
+    body: "在完整路线后复现固定 revision 的模型配方；若走 Thor 双臂路线，再按 22 个 Gate 补齐 action contract、延迟、扰动评测、真机安全与纠错闭环。",
   },
 ];
 
@@ -33,12 +33,12 @@ const prerequisites = [
 ];
 
 const schedule = [
-  ["WEEK 0–2", "建立共同语言", "先修自检；第 0–2 章；完成 toy BC、条件打乱和闭环分布偏移解释。"],
-  ["WEEK 3–4", "读懂 VLA 内部", "第 3–5 章；画清 token、mask、动作契约、chunk horizon 与执行 horizon。"],
-  ["WEEK 5–6", "掌握生成式动作", "第 6–7 章；分别跑通 diffusion 多峰直觉与 flow 方向单测。"],
-  ["WEEK 7–8", "从模型到数据", "第 8–9 章；理解 π₀.₅ 边界，并完成数据门禁、ACT baseline 和 rollout 记录。"],
-  ["WEEK 9–10", "形成全局认知", "第 10–11 章；按约束选型，区分 VLA、层级策略、世界模型与规划器。"],
-  ["WEEK 11–12", "部署与综合", "第 12 章；完成延迟预算、安全 sandwich 和失败树；随后进入第 13 章毕业项目。"],
+  ["WEEK 0–2", "系统与数学地基", "控制边界、数学地基与历史；完成 NLL/KL/advantage/ODE 手算。"],
+  ["WEEK 3–5", "从 BC 到 ACT", "完成 BC、ACT/CVAE、action chunking；画清训练/推理和时间对齐。"],
+  ["WEEK 6–8", "读懂 VLA 内部", "多模态 Transformer、动作表示、diffusion 与 flow；每种机制制造一次失败。"],
+  ["WEEK 9–11", "模型与数据适配", "π₀.₅、模型家族、数据工程和同接口 ACT baseline。"],
+  ["WEEK 12–13", "后训练与世界模型", "按能力/reward/safety Gate 选择纠错 SFT、DAgger 或可选 RL。"],
+  ["WEEK 14–16", "部署与综合", "通用实时部署、故障注入与毕业项目；Thor 双臂 22 步作为额外工程轨。"],
 ];
 
 const gates = [
@@ -75,7 +75,7 @@ export default function VlaGuidePage() {
     <div className="site-shell container">
       <section className="page-hero">
         <p className="eyebrow">Study contract · Learn to build, not recite</p>
-        <h1 className="page-title">把 14 章走成一条<br />可以验收的学习路径</h1>
+        <h1 className="page-title">把 18 章走成一条<br />可以验收的学习路径</h1>
         <p className="page-intro">“单站闭环”不等于拒绝原论文，而是概念、公式、实验步骤和验收标准都在本站完成；外部链接只承担证据核对与随版本变化的 API 参考。</p>
         <div className="cta-row"><Link className="button" href="/learning/vla/control-to-vla">开始第 0 章 →</Link><Link className="button secondary" href="/learning/vla">查看全部章节</Link></div>
       </section>
@@ -100,7 +100,7 @@ export default function VlaGuidePage() {
 
       <section className="lesson-section">
         <p className="eyebrow">Recommended pace</p>
-        <h2>12 周主线 + 3–5 周毕业项目</h2>
+        <h2>16 周主线 + 3–5 周毕业项目</h2>
         <div className="module-grid">{schedule.map(([week, title, body]) => <article className="module-card" key={week}><div className="module-meta"><span>{week}</span><span>6–8h</span></div><h3>{title}</h3><p>{body}</p></article>)}</div>
       </section>
 

@@ -1,3 +1,5 @@
+import { supplementalLessonContent } from "@/lib/supplementalLessonContent";
+
 export type LessonDetail = {
   lead: string;
   objectives?: string[];
@@ -33,10 +35,11 @@ export type LessonDetail = {
   review: string[];
   completion: string;
   sources: { title: string; url: string; role: string }[];
-  visual?: "pipeline" | "history" | "action" | "pi05" | "world" | "latency";
+  visual?: "pipeline" | "history" | "bc" | "transformer" | "action" | "act" | "diffusion" | "flow" | "pi05" | "data" | "families" | "world" | "latency" | "math" | "post-training" | "whole-body" | "capstone";
 };
 
 export const lessonContent: Record<string, LessonDetail> = {
+  ...supplementalLessonContent,
   "control-to-vla": {
     lead: "多数大模型 VLA 的策略查询频率通常低于高频伺服频率，但低频不是 VLA 的定义；动作采样、策略查询和伺服控制也可能各用不同频率。先把系统边界画对，再谈模型。",
     objectives: [
@@ -328,7 +331,7 @@ export const lessonContent: Record<string, LessonDetail> = {
       { title: "MIT Underactuated · Imitation Learning", url: "https://underactuated.mit.edu/imitation.html", role: "BC、状态分布与模仿学习理论" },
       { title: "A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning", url: "https://arxiv.org/abs/1011.0686", role: "DAgger 理论推导" },
       { title: "PyTorch / TorchRL VLA Tutorial", url: "https://docs.pytorch.org/rl/main/tutorials/vla.html", role: "CPU 可运行的 chunked BC 与确切输出参考" },
-    ],
+    ], visual: "bc",
   },
 
   "multimodal-transformer": {
@@ -416,7 +419,7 @@ export const lessonContent: Record<string, LessonDetail> = {
     },
     pitfalls: ["把 token 序列位置当物理时间", "训练时泄露未来 clean action", "忽略相机身份和稳定顺序", "把连续 action slots 强套语言 causal mask", "认为 attention map 就能证明因果关系", "训练 prefix 与推理 prefix 不一致"],
     review: ["为什么点积除以 √dₖ，softmax 又必须沿 key 维？", "给定 [B,h,Nq,dₖ] 与 [B,h,Nk,dₖ]，attention logits 的 shape 是什么？", "自回归 action token 与带噪 action suffix 分别允许看到哪些位置？", "为什么改变 future clean label 是比只看 mask 图更强的泄漏测试？", "相机顺序、timestamp 和 position id 分别解决什么问题？"], completion: "独立写出 tensor contract、三种 mask 和一个未来标签干预测试，并从真实模型图还原输入、信息流、动作接口与训练目标。",
-    sources: [{ title: "Transformer", url: "https://arxiv.org/abs/1706.03762", role: "注意力" }, { title: "OpenVLA", url: "https://arxiv.org/abs/2406.09246", role: "离散动作" }, { title: "π₀", url: "https://arxiv.org/abs/2410.24164", role: "连续 suffix" }],
+    sources: [{ title: "Transformer", url: "https://arxiv.org/abs/1706.03762", role: "注意力" }, { title: "OpenVLA", url: "https://arxiv.org/abs/2406.09246", role: "离散动作" }, { title: "π₀", url: "https://arxiv.org/abs/2410.24164", role: "连续 suffix" }], visual: "transformer",
   },
 
   "action-representations": {
@@ -564,7 +567,7 @@ export const lessonContent: Record<string, LessonDetail> = {
     },
     pitfalls: ["机器人时间 t 与扩散步 k 混用", "训练 prediction type 与推理 sampler 错配", "padding 未 mask 或统计量跨 split 泄漏", "把所有 H 步开环执行", "认为能表达多峰就必然学好所有模式", "只报 denoising loss 不做 rollout", "把一维 toy 结果当真实机器人证据"],
     review: ["为什么 ᾱₖ 是 α 的连乘，两个闭式系数又分别开平方？", "ε-prediction 的输入、输出和监督目标各是什么 shape？", "为什么训练可以随机一个 k，而推理必须沿反向步骤采样？", "若模型预测 x₀ 而 sampler 按 ε 解释，会发生什么？", "Diffusion 能表达多峰，为什么仍需 receding horizon、延迟预算和安全层？"], completion: "独立推导前向闭式、实现或审查 ε-prediction 与配套反向采样，在最小双峰实验中制造并定位一次失败，再画出动作块策略的闭环部署边界。",
-    sources: [{ title: "Denoising Diffusion Probabilistic Models", url: "https://arxiv.org/abs/2006.11239", role: "DDPM 原理" }, { title: "Diffusion Policy", url: "https://diffusion-policy.cs.columbia.edu/", role: "机器人动作策略" }],
+    sources: [{ title: "Denoising Diffusion Probabilistic Models", url: "https://arxiv.org/abs/2006.11239", role: "DDPM 原理" }, { title: "Diffusion Policy", url: "https://diffusion-policy.cs.columbia.edu/", role: "机器人动作策略" }], visual: "diffusion",
   },
 
   "flow-matching": {
@@ -591,7 +594,7 @@ export const lessonContent: Record<string, LessonDetail> = {
     practice: { title: "训练条件 velocity + ODE solver", summary: "标准库脚本采样条件 transport 数据、梯度下降训练 vθ(x,τ,c)，并用正/反时间 Euler solver 从噪声生成数据。", prerequisites: ["Python 3.10+；无需 PyTorch。", "先完成 ε=−1,A=2 的手算，不要先读输出。"], steps: ["运行 python public/labs/flow_matching_1d.py，保存权重、held-out MSE 与 endpoint。", "阅读 make_rows，指出训练输入、目标和 condition；证明 target=2c。", "把 condition 特征删除，观察 held-out loss；解释无条件场为何无法同时向左右平移。", "把 solver steps 改为1/5/20；再把 Toy 改成非恒定速度，观察 Euler 误差随步数变化。", "只翻 velocity 符号不翻 dt，确认 wrong-sign endpoint 远离1.3。", "在纸上把 x 扩成 [B,H,dₐ]，写出 mask、normalization 和 observation 条件的位置。"], expected: ["【本地已确认】权重约[0,0,2,0]，held-out velocity MSE 4→约0。", "正时间与反时间 solver 最大 endpoint 误差约0；错误符号从−0.7走到−2.7，而目标为1.3。", "脚本最终打印 ALL CHECKS PASSED。"], acceptance: ["能不看答案推出 A−ε，并写出训练/推理算法。", "condition 消融后能解释 loss 变化。", "正反时间 convention 都到同一终点，错误组合被单测捕获。", "能说明 Toy 已验证什么、没有验证什么。"], debugging: ["velocity loss 不降：打印 (Xτ,τ,c,target)，查 target 符号、特征和梯度。", "loss 低但 endpoint 错：查 solver 输入统计、dt 符号、时间端点和是否漏 condition。", "步数增加仍发散：这通常不是 Euler 精度，而是方向或速度场错误。", "真实 chunk 出 NaN：先查归一化、mask、τ broadcasting 和 solver 中间值，不要只 clip 最终动作。"], status: "已验证", code: "python public/labs/flow_matching_1d.py" },
     pitfalls: ["改速度不改积分方向", "协方差漏平方", "action slots 称语言 token", "部署统计不一致"],
     review: ["为何导数 A−ε？", "openpi 的 ε−A 为何仍正确？", "flow 与 diffusion 采样差异？"], completion: "用数值测试证明 flow 方向，解释论文/代码 convention。",
-    sources: [{ title: "Flow Matching", url: "https://arxiv.org/abs/2210.02747", role: "速度场" }, { title: "π₀", url: "https://arxiv.org/abs/2410.24164", role: "action expert" }, { title: "openpi pi0.py", url: "https://github.com/Physical-Intelligence/openpi/blob/main/src/openpi/models/pi0.py", role: "实现" }],
+    sources: [{ title: "Flow Matching", url: "https://arxiv.org/abs/2210.02747", role: "速度场" }, { title: "π₀", url: "https://arxiv.org/abs/2410.24164", role: "action expert" }, { title: "openpi pi0.py", url: "https://github.com/Physical-Intelligence/openpi/blob/main/src/openpi/models/pi0.py", role: "实现" }], visual: "flow",
   },
 
   pi05: {
@@ -749,7 +752,7 @@ export const lessonContent: Record<string, LessonDetail> = {
     pitfalls: ["按 frame 随机拆分造成近重复泄漏", "用 val/test 计算归一化或动作分位数", "ACT 与 VLA 使用不同输入或限幅却比较成功率", "LoRA adapter 正常加载但 action head 维度/语义错误", "只看 val loss 或最好视频，不保存逐次 rollout", "把 OFT 论文结果当成目标机器人承诺"],
     review: ["为什么 split 和 normalization 都必须以 train episode 为边界？", "ACT 成功而 VLA 失败时，前四个检查项是什么？", "LoRA 为什么仍可能 OOM，又为何不能自动适配新 action space？", "如何用专家动作 replay 把策略问题和执行器问题分开？", "一个公平 rollout 协议至少要冻结哪些变量？"],
     completion: "交付可机器审计的 schema/split/norm、从 20 条教学样本起步并按风险扩大的同步 replay、ACT baseline、VLA adapter/head、同协议 rollout 表、失败树，以及包含 revision/seed/显存/延迟/证据边界的实验卡。",
-    sources: [{ title: "LeRobotDataset v3", url: "https://huggingface.co/docs/lerobot/lerobot-dataset-v3", role: "数据格式" }, { title: "ACT", url: "https://github.com/tonyzhaozh/act", role: "基线实现" }, { title: "OpenVLA-OFT", url: "https://openvla-oft.github.io/", role: "连续动作适配" }, { title: "LoRA", url: "https://openreview.net/forum?id=nZeVKeeFYf9", role: "低秩适配" }, { title: "LeRobot", url: "https://github.com/huggingface/lerobot", role: "训练与评测底座" }],
+    sources: [{ title: "LeRobotDataset v3", url: "https://huggingface.co/docs/lerobot/lerobot-dataset-v3", role: "数据格式" }, { title: "ACT", url: "https://github.com/tonyzhaozh/act", role: "基线实现" }, { title: "OpenVLA-OFT", url: "https://openvla-oft.github.io/", role: "连续动作适配" }, { title: "LoRA", url: "https://openreview.net/forum?id=nZeVKeeFYf9", role: "低秩适配" }, { title: "LeRobot", url: "https://github.com/huggingface/lerobot", role: "训练与评测底座" }], visual: "data",
   },
 
   "vla-families": {
@@ -777,7 +780,7 @@ export const lessonContent: Record<string, LessonDetail> = {
     practice: { title: "双案例约束选型", summary: "不训练全部模型；先从官方来源建矩阵，对两个案例完成 Gate→评分→smoke 计划，并保留 unknown。", prerequisites: ["已完成动作表示、chunking 和数据适配章节。", "明确自己的机器人 action contract 和硬件/时间预算。"], steps: ["为每个候选填写七维矩阵；所有动态事实附 revision/date，未知写 unknown。", "列5个不可妥协 Gate，先淘汰 license/adapter/hardware/release 不可行项。", "对案例A选 baseline/primary/stretch，并为每个被淘汰项写一条证据化理由。", "对案例B重新设权重，不复用案例A结论；加入跨本体与p99部署成本。", "让评分权重上下变化20%，观察首选是否稳定；若不稳定，指出需要补哪项实测。", "为最终两个候选设计同协议 smoke：小数据过拟合、random inference、延迟、checkpoint reload 和至少一组 rollout。"], expected: ["产出两张包含 source/revision/date/unknown 的矩阵。", "案例A和B的首选可以不同，且各有 baseline/primary/stretch。", "不会用论文参数量或单一成功率直接替代接口、硬件与数据可行性。"], acceptance: ["能解释离散AR、连续chunk与diffusion/flow 的工程差异。", "输入/输出/data/open-source/hardware/边界七项无空白伪造。", "硬 Gate 不被加权高分覆盖。", "最终建议包含可执行 smoke 和改变决策的触发条件。"], debugging: ["所有模型得分接近：权重或尺度没有体现项目硬约束，先做 Gate。", "显存信息冲突：记录 precision/batch/mode/revision/date，分别写官方值与实测值。", "README 说支持但 adapter 报错：以固定 revision 的代码/schema 为准，记录 issue，不自行推断。", "首选随权重轻微变化就翻转：不要给假精度，优先补 latency/rollout 实测。", "大模型表面最强：检查是否与 baseline 使用相同数据、相机、安全层和 rollout 协议。"], status: "配方核验" },
     pitfalls: ["把开源当成论文/代码/权重/数据/许可全部开放", "混用不同 release 的能力和显存数字", "评分前不做硬 Gate", "忽略输入相机与 action contract", "用平均推理延迟设计队列", "没有窄任务 baseline"],
     review: ["三种动作生成范式的训练与部署差异？", "开源层级至少拆成哪六项？", "案例A为什么不应默认最大模型？", "案例B为什么云端算力充足仍可能部署失败？", "什么事实会让你的 primary 与 stretch 互换？"], completion: "为两个约束案例交付可追溯矩阵、baseline/primary/stretch、同协议 smoke 计划和决策更新触发器。",
-    sources: [{ title: "SmolVLA", url: "https://huggingface.co/docs/lerobot/smolvla", role: "轻量" }, { title: "OFT", url: "https://openvla-oft.github.io/", role: "连续动作" }, { title: "X-VLA", url: "https://huggingface.co/docs/lerobot/xvla", role: "跨本体" }, { title: "GR00T", url: "https://github.com/NVIDIA/Isaac-GR00T", role: "人形" }, { title: "Octo", url: "https://octo-models.github.io/", role: "通用策略" }],
+    sources: [{ title: "SmolVLA", url: "https://huggingface.co/docs/lerobot/smolvla", role: "轻量" }, { title: "OFT", url: "https://openvla-oft.github.io/", role: "连续动作" }, { title: "X-VLA", url: "https://huggingface.co/docs/lerobot/xvla", role: "跨本体" }, { title: "GR00T", url: "https://github.com/NVIDIA/Isaac-GR00T", role: "人形" }, { title: "Octo", url: "https://octo-models.github.io/", role: "通用策略" }], visual: "families",
   },
 
   "world-models": {
@@ -1045,6 +1048,6 @@ export const lessonContent: Record<string, LessonDetail> = {
     pitfalls: ["把 25–40h 学习预算当 GPU 训练墙钟承诺", "挑最好视频或最好 seed", "同一场景/episode 泄漏到 train 和 test", "ACT 与 VLA 使用不同安全限幅或成功判据", "消融一次改变多个变量", "真机没有接管和独立安全层", "未运行却引用官方结果声称目标任务有效"],
     review: ["最小仿真版 M0–M6 各自阻止什么风险？", "为什么 ACT/VLA 必须统一到物理动作接口后比较？", "成功率为什么同时报告 N、分层结果和不确定性？", "如何用专家动作 replay 区分策略与执行器失败？", "哪些条件不满足时真机扩展必须停止？"],
     completion: "核心版由另一位工程师复现 M0–M6，并从日志定位失败；真机版只有在独立安全门禁和实际灰度日志存在时才报告结果，未执行部分明确标为暂无法验证。",
-    sources: [{ title: "LIBERO", url: "https://libero-project.github.io/main.html", role: "仿真 benchmark" }, { title: "ACT", url: "https://github.com/tonyzhaozh/act", role: "局部策略 baseline" }, { title: "LeRobot", url: "https://github.com/huggingface/lerobot", role: "数据与策略工程" }, { title: "SmolVLA", url: "https://huggingface.co/docs/lerobot/smolvla", role: "轻量 VLA 路线" }, { title: "openpi", url: "https://github.com/Physical-Intelligence/openpi", role: "π₀ 系列可选扩展" }],
+    sources: [{ title: "LIBERO", url: "https://libero-project.github.io/main.html", role: "仿真 benchmark" }, { title: "ACT", url: "https://github.com/tonyzhaozh/act", role: "局部策略 baseline" }, { title: "LeRobot", url: "https://github.com/huggingface/lerobot", role: "数据与策略工程" }, { title: "SmolVLA", url: "https://huggingface.co/docs/lerobot/smolvla", role: "轻量 VLA 路线" }, { title: "openpi", url: "https://github.com/Physical-Intelligence/openpi", role: "π₀ 系列可选扩展" }], visual: "capstone",
   },
 };

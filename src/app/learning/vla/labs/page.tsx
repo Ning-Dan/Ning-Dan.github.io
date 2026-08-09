@@ -105,6 +105,10 @@ const verifiedLabs = [
     expected: "默认 inference p99=190ms、network p99=55ms、reserve=6；schema/stale/watchdog/TTL 故障均被捕获。",
     boundary: "离散事件 Toy 只验证协议与降级逻辑，不是实时控制器、碰撞检测器或功能安全认证。",
   },
+  { id: "L0-10", title: "VLA 数学地基", lesson: "VLA 数学地基", lessonHref: "/learning/vla/math-foundations/", file: "vla_math_foundations.py", command: "python public/labs/vla_math_foundations.py", goal: "核对高斯 NLL、KL、return/advantage、数值差分与 flow Euler 方向。", expected: "打印五组确定性检查并以 MATH CHECKS PASS 结束。", boundary: "只验证算术与符号方向，不验证神经网络训练或真实策略效果。" },
+  { id: "L0-11", title: "ACT CVAE 与 Temporal Ensemble", lesson: "ACT 与 CVAE", lessonHref: "/learning/vla/act-cvae/", file: "act_cvae_mechanics.py", command: "python public/labs/act_cvae_mechanics.py", goal: "手算重参数化/KL，并按物理执行时刻融合三个重叠动作块。", expected: "输出三个候选、指数权重、融合动作和 masked MSE，最后 ACT MECHANICS PASS。", boundary: "没有训练图像 Transformer，也不是 ACT 论文复现。" },
+  { id: "L0-12", title: "Group-relative 后训练", lesson: "VLA 后训练与数据闭环", lessonHref: "/learning/vla/post-training/", file: "post_training_group_rl.py", command: "python public/labs/post_training_group_rl.py", goal: "比较混合成功组与全失败组的相对 advantage，并核对 clipped objective。", expected: "混合组产生正负 advantage，全失败组为零信号，最后 POST-TRAINING TOY PASS。", boundary: "二元 reward 算术示例，不声明可直接用于任意 flow/diffusion VLA。" },
+  { id: "L0-13", title: "Whole-body Action Contract", lesson: "π₀.₅ × Thor 双臂移动机器人部署", lessonHref: "/learning/vla/mobile-dual-arm-pi-deployment/", file: "whole_body_action_contract.py", command: "python public/labs/whole_body_action_contract.py", goal: "验证双臂、夹爪、2-DOF 腰部与底盘的命名 slice、mode mask、pad-to-32、round-trip 和 NaN 拒绝。", expected: "默认示例 active_dim=20、pad_dim=32，base 在 manipulate mode 关闭，并打印 WHOLE-BODY CONTRACT PASS。", boundary: "DOF、底盘语义、limits 和统计全是教学示例；必须由实际 robot_io.csv 替换。" },
 ];
 
 export default function LabsPage() {
@@ -114,7 +118,7 @@ export default function LabsPage() {
         <p className="eyebrow">Verified local labs</p>
         <h1 className="page-title">每个核心机制，都要有可运行的反例与验收</h1>
         <p className="page-intro">
-          下列 9 个实验已在当前项目中实际执行。点击章节先读原理，复制命令在项目根目录运行，下载按钮用于单独查看脚本。所有结果都只证明对应 Toy 机制，不代表真实机器人成功率。
+          下列 13 个实验已在当前项目中实际执行。点击章节先读原理，复制命令在项目根目录运行，下载按钮用于单独查看脚本。所有结果都只证明对应 Toy 机制，不代表真实机器人成功率。
         </p>
       </section>
 
