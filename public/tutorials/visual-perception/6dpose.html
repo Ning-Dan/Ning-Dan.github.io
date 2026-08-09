@@ -133,8 +133,74 @@ footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);
   details.sec>summary{display:none}
   .nav,.bar button{display:none}
 }
+/* ===== 个人网站集成层：只调整排版与导航，不改教程正文 ===== */
+:root{
+  --bg:#F4F1E9;--card:#FFFDF8;--ink:#172027;--mut:#687078;--line:#D4CEC0;
+  --site-blue:#315FEF;--site-coral:#F36F56;--site-paper-deep:#EBE6DA;
+}
+html{scroll-padding-top:88px}
+body{
+  background:
+    radial-gradient(circle at 12% 8%,rgba(49,95,239,.07),transparent 28%),
+    radial-gradient(circle at 92% 16%,rgba(243,111,86,.07),transparent 23%),
+    var(--bg);
+}
+.site-nav{position:sticky;top:0;z-index:100;border-bottom:1px solid rgba(23,32,39,.12);background:rgba(244,241,233,.92);backdrop-filter:blur(16px)}
+.site-nav-inner{max-width:1180px;height:68px;margin:0 auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between;gap:22px}
+.site-brand{display:inline-flex;align-items:center;gap:10px;color:var(--ink);font-weight:800;text-decoration:none;white-space:nowrap}
+.site-brand-mark{width:30px;height:30px;display:grid;place-items:center;border:1.5px solid var(--ink);border-radius:9px 9px 9px 2px;background:var(--site-blue);color:#fff;box-shadow:3px 3px 0 var(--ink);font:700 11px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.site-nav-links{display:flex;align-items:center;justify-content:flex-end;gap:8px;font-size:14px}
+.site-nav-links a{padding:8px 11px;border-radius:999px;color:#4F5961;text-decoration:none;white-space:nowrap}
+.site-nav-links a:hover{background:rgba(23,32,39,.07);color:var(--ink)}
+.site-nav-links .site-back{border:1.5px solid var(--ink);border-radius:9px;background:var(--site-blue);color:#fff;font-weight:800;box-shadow:3px 3px 0 var(--ink)}
+.site-nav-links .site-back:hover{background:var(--site-blue);color:#fff;transform:translate(1px,1px);box-shadow:2px 2px 0 var(--ink)}
+.wrap{max-width:1180px}
+header.top{margin:0;padding:32px 20px 24px;background:transparent;color:var(--ink)}
+header.top .wrap{padding:38px 40px;background:var(--card);border:1.5px solid var(--ink);border-radius:20px 20px 20px 5px;box-shadow:10px 10px 0 var(--site-paper-deep),11px 11px 0 var(--ink)}
+header.top h1{font-size:clamp(30px,4vw,48px);line-height:1.16;letter-spacing:-.045em;color:var(--ink)}
+header.top p{color:#4E5962;font-size:16px}
+header.top .files{color:#687078}
+header.top .files code{background:#E6EBFF;color:#2447B6}
+.map,details.sec{border:1.5px solid var(--ink);box-shadow:4px 4px 0 var(--site-paper-deep)}
+.map{border-radius:16px}
+.chain{border:1.5px solid var(--ink);box-shadow:3px 3px 0 var(--site-paper-deep)}
+.nav a{border:1.5px solid var(--ink);background:var(--card);color:var(--ink);font-weight:700}
+.nav a:hover{background:#E6EBFF}
+details.sec{border-radius:16px 16px 16px 4px;scroll-margin-top:88px}
+details.sec>summary{background:var(--card);padding:18px 22px}
+details.sec>summary:hover{background:#F7F4EC}
+details.sec[open]>summary{background:#F7F4EC}
+.sbody{padding:10px 30px 32px}
+.sbody h3{border-left-color:var(--site-blue);letter-spacing:-.015em}
+.sbody blockquote{background:#E6EBFF;border-left-color:var(--site-blue)}
+.sbody pre{border:1.5px solid var(--ink);box-shadow:3px 3px 0 var(--site-paper-deep)}
+.sbody table{background:var(--card)}
+.sbody th{background:#EBE6DA}
+::selection{background:#F2C94C;color:var(--ink)}
+@media(max-width:720px){
+  .site-nav-inner{height:60px;padding:0 14px}
+  .site-brand>span:last-child,.site-nav-links .site-home{display:none}
+  .site-nav-links{gap:4px;font-size:13px}
+  .site-nav-links a{padding:7px 9px}
+  header.top{padding:20px 14px 18px}
+  header.top .wrap{padding:24px 20px;box-shadow:6px 6px 0 var(--site-paper-deep),7px 7px 0 var(--ink)}
+  .wrap{padding-left:14px;padding-right:14px}
+  .sbody{padding:8px 16px 24px}
+  details.sec>summary{padding:15px 16px;font-size:16px}
+}
+@media print{.site-nav{display:none}}
 </style></head>
 <body>
+<nav class="site-nav" id="page-top" aria-label="站点导航">
+  <div class="site-nav-inner">
+    <a class="site-brand" href="/" aria-label="返回个人网站首页"><span class="site-brand-mark">ND</span><span>Ning-Dan · Robotics Notebook</span></a>
+    <div class="site-nav-links">
+      <a class="site-home" href="/learning/">学习中心</a>
+      <a href="#page-top">回到顶部</a>
+      <a class="site-back" href="/learning/visual-perception/">← 返回课程主页</a>
+    </div>
+  </div>
+</nav>
 <header class="top"><div class="wrap">
   <h1>RGBD 相机做定位与 6D 位姿估计 —— 学习地图与核心原理</h1>
   <p>从成像原理到夹爪合拢 · 10 层 · 50 个知识点 · 10 张示意图 · 依赖自上而下</p>

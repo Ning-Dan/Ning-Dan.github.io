@@ -1,69 +1,68 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { studyGuidance } from "@/lib/course";
-import { visualPerceptionModules } from "@/lib/visualPerceptionCourse";
+
+const tutorialPath = "/tutorials/visual-perception/6dpose.html";
+
+const originalSections = [
+  { anchor: "sec0", number: "00", phase: "使用说明", title: "怎么用这份讲义" },
+  { anchor: "sec1", number: "01", phase: "快速通道", title: "运控背景读者的新难点" },
+  { anchor: "sec2", number: "02", phase: "问题边界", title: "SLAM 与物体 6D 位姿" },
+  { anchor: "sec3", number: "03", phase: "L1", title: "成像与深度相机" },
+  { anchor: "sec4", number: "04", phase: "L2", title: "标定" },
+  { anchor: "sec5", number: "05", phase: "L3", title: "深度图 → 点云" },
+  { anchor: "sec6", number: "06", phase: "L4", title: "刚体变换数学" },
+  { anchor: "sec7", number: "07", phase: "L5", title: "2D 前置：识别与分割" },
+  { anchor: "sec8", number: "08", phase: "L6", title: "经典几何法：粗位姿" },
+  { anchor: "sec9", number: "09", phase: "L7", title: "学习法 6D" },
+  { anchor: "sec10", number: "10", phase: "L8", title: "精配准 Refinement" },
+  { anchor: "sec11", number: "11", phase: "L9", title: "合作目标定位 AprilTag" },
+  { anchor: "sec12", number: "12", phase: "L10", title: "工程闭环" },
+  { anchor: "sec13", number: "13", phase: "路线", title: "学习路线一页纸" },
+  { anchor: "sec14", number: "14", phase: "附录", title: "符号速查" },
+  { anchor: "sec15", number: "15", phase: "收束", title: "一句话收尾" },
+] as const;
 
 export const metadata: Metadata = {
-  title: "Visual Perception · 6D 位姿估计课程",
-  description: "12 章原生中文课程：从 RGB-D 成像、标定与点云，到粗位姿、ICP、评估和机器人抓取闭环。",
+  title: "Visual Perception · RGB-D 与 6D 位姿估计",
+  description: "完整的 RGB-D 相机定位与 6D 位姿估计中文教程；本页只提供导航，正文统一来自自包含长版教程。",
 };
 
 export default function VisualPerceptionPage() {
   return (
     <div className="site-shell container">
       <section className="page-hero">
-        <p className="eyebrow">Visual Perception · 12 modules · project driven</p>
+        <p className="eyebrow">Visual Perception · one canonical tutorial</p>
         <h1 className="page-title">RGB-D 与 6D 位姿估计</h1>
         <p className="page-intro">
-          保留原学习地图的完整主线，改造成与 VLA 相同的逐章课程：每章明确学习深度、原理、公式、动手步骤、验收、失效模式、来源和自测。建议先用两周打通最短闭环，再逐步增加遮挡、杂乱和新物体。
+          这里不再维护一份删减后的逐章正文。知识地图、完整讲义、公式、表格、代码和示意图统一保存在同一个自包含 HTML 中；本页只负责入口与章节导航。
         </p>
         <div className="insight">
-          <strong>关于时长：课程编排观点</strong>
-          <span>每章小时数是包含阅读、推导、采集、实验和验收的建议预算，不是普遍完成时间。章节内会逐项列出时间去向；应以产出和通过标准为准。</span>
+          <strong>唯一正文来源</strong>
+          <span>从下面任一入口进入的都是同一份完整教程。教程顶部会一直保留“返回课程主页”，链接在当前标签页打开，因此浏览器返回和页面内返回都可用。</span>
         </div>
         <div className="cta-row">
-          <Link className="button" href="/learning/visual-perception/map-and-problem">开始第一章 →</Link>
-          <a className="button secondary" href="/tutorials/visual-perception/6dpose.html" target="_blank" rel="noreferrer">查看原始长版 ↗</a>
+          <a className="button" href={`${tutorialPath}#sec0`}>从使用说明开始 →</a>
+          <a className="button secondary" href={tutorialPath}>打开完整知识地图</a>
           <Link className="button secondary" href="/learning">返回学习中心</Link>
         </div>
       </section>
 
-      <section className="lesson-section" aria-labelledby="evidence-title">
-        <h2 id="evidence-title">证据标签怎么读</h2>
-        <div className="practice-columns">
-          <div>
-            <h4>已确认事实</h4>
-            <p>可由成像几何、论文或官方文档直接支持；关键公式和模型能力附原始来源。</p>
-            <h4>合理推测</h4>
-            <p>由已知机制推出，但仍依赖场景或实现；正文会说明推测前提。</p>
-          </div>
-          <div>
-            <h4>工程建议 / 个人观点</h4>
-            <p>用于缩短调试和选型路径，不包装成普遍事实；阈值必须在自己的数据上验证。</p>
-            <h4>暂无法验证</h4>
-            <p>设备、环境或闭源实现信息不足时明确保留，不用单次 demo 代替证据。</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="module-grid" style={{ paddingBottom: 96 }}>
-        {visualPerceptionModules.map((module) => {
-          const guidance = studyGuidance[module.level];
-          return (
-            <Link className="module-card" href={`/learning/visual-perception/${module.slug}`} key={module.slug}>
+      <section className="lesson-section" aria-labelledby="chapter-title" style={{ marginBottom: 96 }}>
+        <p className="eyebrow">Original chapter index</p>
+        <h2 id="chapter-title">直接进入原文章节</h2>
+        <p>这些卡片只定位到原 HTML 的章节锚点，不包含第二份改写正文。</p>
+        <div className="module-grid" style={{ marginTop: 24 }}>
+          {originalSections.map((section) => (
+            <a className="module-card" href={`${tutorialPath}#${section.anchor}`} key={section.anchor}>
               <div className="module-meta">
-                <span>{String(module.index).padStart(2, "0")} · {module.phase}</span>
-                <span className={`study-label ${guidance.tone}`}>{guidance.label}</span>
+                <span>{section.number} · {section.phase}</span>
+                <span>原文 →</span>
               </div>
-              <h3>{module.title}</h3>
-              <p>{module.subtitle}</p>
-              <div className="tag-row">
-                <span className="tag">建议 {module.hours}</span>
-                {module.tags.map((tag) => <span className="tag" key={tag}>{tag}</span>)}
-              </div>
-            </Link>
-          );
-        })}
+              <h3>{section.title}</h3>
+              <div className="tag-row"><span className="tag">完整内容</span></div>
+            </a>
+          ))}
+        </div>
       </section>
     </div>
   );
