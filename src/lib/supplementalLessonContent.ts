@@ -2,46 +2,55 @@ import type { LessonDetail } from "@/lib/lessonContent";
 
 export const supplementalLessonContent = {
   "math-foundations": {
-    lead: "本章整理一张贯穿 BC、CVAE、diffusion、flow 与 RL 后训练的符号地图。后续公式都应能逐项核对，不必靠记忆猜 shape。",
+    lead: "这一章从零解释后面反复出现的数学词。我们始终使用同一条‘看到红杯并生成三步动作’样本，先说明每个概念在解决什么问题，再写符号、代数字、运行脚本。你不需要预先学过概率论、强化学习或微分方程。",
     objectives: [
-      "统一随机变量、张量 shape、条件概率与时间下标的写法。",
-      "从最大似然推到 NLL、MSE 和交叉熵，并说清各自隐含的分布假设。",
-      "手算 KL、return、value、advantage 与 clipped policy objective。",
-      "把离散去噪、连续速度场和 Euler 积分放进同一生成建模坐标系。",
-      "用数值差分检查一个解析梯度，并识别单位、符号和 reduction 错误。",
+      "先用自然语言解释 probability、likelihood、NLL、KL、reward、return、value、advantage、gradient 和 ODE。",
+      "把一条抓杯样本翻译成 x、A、B、K、H、dₐ，并能读出每个张量的 shape。",
+      "从‘提高专家动作的概率’逐步推到 NLL、MSE 和交叉熵，说明成立条件。",
+      "用一条三步轨迹算 return、value、advantage，再理解 policy gradient 与 PPO clipping。",
+      "用匀速运动理解导数、速度场、Euler 积分，并区分本课程中的 diffusion 与 flow 练习。",
     ],
     timePlan: [
-      { duration: "0:00–0:45", title: "先统一符号和 shape", activity: "建立 batch、time、action、camera 四个轴，给每个公式补 shape。", deliverable: "一页 VLA 符号表。" },
-      { duration: "0:45–1:45", title: "似然、NLL 与监督学习", activity: "从高斯和 categorical likelihood 推导 MSE/交叉熵。", deliverable: "两次逐行推导。" },
-      { duration: "1:45–2:45", title: "KL 与 CVAE", activity: "手算一维高斯 KL，解释 posterior collapse 与 β。", deliverable: "一个可核算数值例。" },
-      { duration: "2:45–4:00", title: "MDP 到 advantage", activity: "手算 return、value、advantage、ratio 与 clip。", deliverable: "一条五步轨迹的后训练表。" },
-      { duration: "4:00–5:00", title: "Diffusion、flow 与数值检查", activity: "比较离散更新与 ODE；运行脚本并故意改错时间方向。", deliverable: "PASS 输出与一条失败解释。" },
+      { duration: "0:00–0:40", title: "先看一条完整样本", activity: "把图像、关节角、语言和未来动作写成带名字的表，不碰公式。", deliverable: "一张输入—输出表。" },
+      { duration: "0:40–1:40", title: "概率、似然、NLL 与 MSE", activity: "从‘模型给专家动作多少分’开始，逐步解释负号、log 和高斯假设。", deliverable: "一个逐行数值例。" },
+      { duration: "1:40–2:30", title: "潜变量与 KL", activity: "用两条不同抓取路径解释 z、posterior、prior 和 KL。", deliverable: "一维高斯 KL 手算。" },
+      { duration: "2:30–3:50", title: "从 reward 到 PPO", activity: "先算三步 return 和 advantage，再解释策略概率为什么要乘 advantage。", deliverable: "一张三步轨迹表。" },
+      { duration: "3:50–5:00", title: "从速度到 ODE", activity: "用 Euler 法走四步，再运行完整脚本并故意反转时间方向。", deliverable: "手算、PASS 输出和失败记录。" },
     ],
     theory: [
-      "VLA 的条件输入可写为 x=(I₁:K,q,ℓ)，监督样本写成 (x,A)：I 是多相机或历史图像，q 是本体状态，ℓ 是语言，A∈R^{H×dₐ} 是动作块。A 是要建模的目标，不属于条件 x。公式里不写 shape 会掩盖最常见的错误：把 batch 和 time 做错 reduction、把 H×dₐ 展平后失去 mask、或把不同单位的动作维度同权相加。",
-      "行为克隆的统一起点是最大化专家动作的条件似然。连续动作若假设各维同方差独立高斯，负对数似然在忽略常数后变成 MSE；离散 token 用 categorical likelihood 得到交叉熵。MSE 不是自然定律，它继承了单峰、尺度和条件独立等建模选择。",
-      "CVAE 引入 z 表示同一观测下的多种合理动作，训练时用近似后验 qφ(z|x,A)，推理时从先验 p(z|x) 采样或取约定值。重建项加一次 KL（β=1）对应标准负 ELBO；把 KL 改为任意权重 β 后，应称 β-CVAE/β-VAE 目标，而不能无条件继续叫 ELBO。β 过大可能让 decoder 忽略 z，过小则训练后验与推理先验不匹配。",
-      "RL 后训练需要区分 reward rₜ、return Gₜ、value V(sₜ)、action value Q(sₜ,aₜ) 与 advantage Aₜ。advantage 不是成功率本身，而是某动作相对基线的超额表现估计。策略比率和裁剪用于限制更新幅度，但不自动带来机器人安全。",
-      "Diffusion 在离散噪声步上学习去噪/score 类目标；flow matching 学连续时间速度场 vθ(x,t,c)，推理通过 ODE 积分把噪声送到数据。两者都必须先约定时间方向、参数化目标与 solver；同一个负号错误会把样本推离目标。",
+      "先看任务：机器人收到 4 帧 RGB、当前关节角和‘拿起红杯’，输出未来 3 步末端增量。把所有已知条件合称 x，把要预测的动作块称为 A。若每步动作是 [Δx,Δz]，单条样本的 A shape 就是 [H=3,dₐ=2]；一次训练放 8 条样本时，batch shape 是 [B=8,H=3,dₐ=2]。",
+      "BC 的问题可以先用一句话描述：给定 x，模型应该给专家动作 A 较高的条件概率密度 pθ(A|x)。likelihood 是固定数据后，把同一个表达式看成参数 θ 的得分。训练通常最小化 −log pθ(A|x)，这就是 negative log-likelihood，简称 NLL。",
+      "MSE 与 NLL 不是两个互不相关的公式。若先假设动作围绕模型均值服从固定方差高斯分布，展开高斯 NLL 后，与均值有关的部分正比于平方误差。固定方差时两者最优点相同，但数值不相等；方差可学习、动作多峰或各维单位差异很大时，简单 MSE 的假设就需要重新检查。",
+      "CVAE 用潜变量 z 表示同一观测下可能出现的不同动作方式，例如从杯子左侧或右侧接近。训练时 encoder 看 x 和真实 A，形成 posterior qφ(z|x,A)；推理时真实未来动作不存在，只能使用 prior p(z|x)。KL 衡量这两个分布有多不一致，使训练时得到的 z 不至于和推理时可用的 z 完全脱节。",
+      "RL 处理的是动作如何影响后续结果。reward 是某一步收到的反馈；return 是从当前时刻起的折扣 reward 总和；value 是采取动作前对未来 return 的平均预测；Q 是指定当前动作后的平均预测；advantage=Q−V，表示这个动作比当前策略的平均水平好多少。",
+      "Policy gradient 的直觉是：采样动作的 advantage 为正，就提高它的概率；为负，就降低它的概率。PPO 再比较新旧策略给同一动作的概率比，限制一次更新不要走得太远。这个 clip 约束训练更新，不负责机器人动作限幅或碰撞安全。",
+      "ODE 描述一个量如何随连续时间变化：dx/dt=v(x,t)。已知当前位置和速度后，Euler 法用 xₖ₊₁=xₖ+Δt·v(xₖ,tₖ) 走一小步。Flow matching 学的是这个速度场；本课程的 diffusion Toy 则使用有限个离散噪声步。两者的共同点是从简单噪声逐步得到动作，时间方向必须写清。",
     ],
     deepDive: [
-      { title: "1. 已确认的等价与没有被证明的外推", paragraphs: ["【已确认】固定方差高斯 NLL 与加权 MSE 只差常数；categorical NLL 就是交叉熵；一维标准高斯 KL 有闭式解。", "【合理推测】统一符号和 shape 检查能减少工程错误，但本站 Toy 没有统计证明它能提高真实机器人成功率。", "【个人观点】先学最小可计算数学、需要时再补严密测度论，比先背完整概率论更适合这条工程课程。", "【暂无法验证】用户真实数据的噪声分布、多峰程度与最优 loss 权重，必须靠数据诊断和 rollout 验证。"], takeaways: ["等价关系都有前提。", "shape、unit、mask 与概率假设同等重要。"] },
-      { title: "2. 从 NLL 到 MSE：常数被删掉了，假设没有", paragraphs: ["若 a|x∼N(μθ(x),σ²I)，则 −log p(a|x)=||a−μ||²/(2σ²)+(d/2)log(2πσ²)。固定 σ 时优化 μ 等价于最小化 MSE；若不同动作维量纲和噪声不同，应归一化或显式使用每维 σ。", "对多峰目标，单高斯均值可能落在两个可行模式之间。改为 mixture、离散 token、CVAE、diffusion 或 flow 是建模分布的变化，不只是换 loss 名字。"], takeaways: ["MSE 隐含单高斯中心。", "归一化决定各维 loss 权重。"] },
-      { title: "3. Advantage 的定义与手算估计", paragraphs: ["正式定义是 A^π(s,a)=Q^π(s,a)−V^π(s)。在一条采样轨迹上，先写 r₀:T、选 γ，再从后向前算 Monte Carlo return Ĝₜ；用估计的 V̂(sₜ) 得到优势估计 Âₜ=Ĝₜ−V̂(sₜ)，不能把单条样本的 G−V 写成真实 A^π 的定义。若做 group-relative 方法，基线可来自同任务的一组 rollout，但组内奖励全相同会导致优势估计接近零。", "策略比率 ρ=πθ(a|s)/πold(a|s) 要求能计算动作的 log probability。连续 flow/diffusion policy 若没有可用似然或训练目标对应的 surrogate，就不能直接把语言模型 PPO 公式原样套上。"], takeaways: ["A^π=Q^π−V^π 是定义，Ĝ−V̂ 是估计。", "能采样不等于能计算 log probability。"] },
+      { title: "1. 先把一条 VLA 样本说清楚", paragraphs: ["输入 x 不是一个神秘向量。对抓杯任务，它可以包含 RGB 历史 I₁:₄、编码器读数 q 和语言指令 ℓ。输出 A 是未来动作块，例如 [[+1cm,0],[+1cm,−0.5cm],[0,−0.5cm]]。训练数据中的一行就是 (x,A)：前者是已知条件，后者是教师答案。", "K 表示历史帧数，H 表示动作步数，dₐ 表示每步动作维度，B 表示一次送进模型的样本数。B=8、H=3、dₐ=2 时，动作张量是 [8,3,2]，总共含 48 个数；它们不一定具有相同单位。"], takeaways: ["先写名字和单位，再写字母。", "K 是观测历史长度，H 是动作预测长度。"] },
+      { title: "2. 公式中的竖线、下标和期望分别是什么", paragraphs: ["p(A|x) 读作‘在已知 x 的条件下，A 的概率分布或密度’。竖线不是除法。θ 是模型参数，下标 θ 表示这个分布由模型决定；t 通常是机器人时间，k 也可能表示数值积分或噪声步骤，必须看章节约定。", "E[·] 表示对许多可能样本取平均。Σ 是显式求和，mean reduction 是程序实际怎么除分母。公式只写 E、代码却在错误的轴上 mean，是常见且会改变训练权重的 bug。"], takeaways: ["先把公式逐字读成一句中文。", "时间下标与张量轴不能凭字母猜。"] },
+      { title: "3. Probability、likelihood、log 与 NLL", paragraphs: ["模型看到 x 后，可能给三个离散动作的概率 [0.8,0.15,0.05]。若专家选择第一个动作，这条数据的 likelihood 是 0.8；选择第三个则是 0.05。训练想让实际出现的专家动作获得更高分。连续动作使用概率密度，密度值本身不必小于 1，但 NLL 的优化逻辑相同。", "多条独立样本的 likelihood 相乘容易得到极小数，log 会把乘法变成加法。训练器习惯做最小化，所以再加一个负号：−log(0.8)≈0.223，−log(0.05)≈2.996。模型越不相信真实答案，损失越大。"], takeaways: ["likelihood 是模型给已观察数据的分数。", "log 方便求和，负号把最大化变成最小化。"] },
+      { title: "4. 从高斯 NLL 走到 MSE", paragraphs: ["取真实动作 a=1.0、模型均值 μ=0.6、固定 σ=0.5。平方误差是 (1.0−0.6)²=0.16；高斯 NLL 中与误差有关的项是 0.16/(2×0.5²)=0.32，再加归一化常数约 0.2258，得到 0.5458。MSE 与 NLL 数值不同，但固定 σ 时都通过让 μ 靠近 1.0 来下降。", "若 x 对应 −1 和 +1 两种同样合理的动作，单均值 MSE 可能预测 0。0 的误差平均最小，却可能不是可执行模式。这正是后面引入 CVAE、diffusion 或 flow 的原因。"], takeaways: ["MSE 等价关系来自固定高斯假设。", "平均误差小不保证动作落在有效模式上。"] },
+      { title: "5. 潜变量 z 与 KL 到底在做什么", paragraphs: ["把 z 想成没有直接标注的‘动作方式’旋钮：z 的不同区域可表示从左侧或右侧接近杯子。训练 encoder 因为看到了真实动作 A，能判断这次演示更像哪一种方式；推理时没有 A，只能从 prior 取 z。", "KL 写成 DKL(q||p)，这里比较训练 posterior q 与推理 prior p。例子 q=N(0.5,0.8²)、p=N(0,1) 的 KL≈0.1681。KL≥0，但通常不对称，因此不是普通几何距离；它也不衡量动作重建是否准确，重建误差由另一项负责。"], takeaways: ["重建项管动作像不像，KL 管训练和推理的 z 是否接得上。", "posterior 训练可见，真实未来动作推理不可见。"] },
+      { title: "6. Reward、return、V、Q 与 advantage", paragraphs: ["假设三步抓取只有最后成功时 reward=1，所以 rewards=[0,0,1]。取 γ=0.9，从后往前算：G₂=1，G₁=0+0.9×1=0.9，G₀=0+0.9×0.9=0.81。前两步即时 reward 为 0，但它们仍对最后成功有贡献。", "若 value 估计为 [0.6,0.8,0.9]，单轨迹 advantage estimate 是 [0.21,0.10,0.10]。正式定义仍是 Aπ=Qπ−Vπ；Ĝ−V̂ 只是用一条采样轨迹构造的估计。正值表示动作结果好于当前基线，不等于任务已经成功。"], takeaways: ["reward 看一步，return 看后续总和。", "advantage 比较指定动作与当前策略平均水平。"] },
+      { title: "7. Policy gradient 与 PPO clipping", paragraphs: ["随机策略 πθ(a|s) 给动作分配概率。Policy gradient 的核心项可读成 ∇logπθ(a|s)×Â：Â 为正时提高该动作的 log probability，Â 为负时降低。它不是直接把 reward 对神经网络求导，而是利用采样动作的 log probability 建立梯度估计。", "若旧策略给动作概率 0.25，新策略给 0.30，则比率 ρ=1.2。ε=0.1 时把它限制到 1.1；对 Â=0.5，未截断项是 0.60，截断项是 0.55，PPO surrogate 取较小的 0.55。这个例子只解释正 advantage；负 advantage 必须重新比较两项。"], takeaways: ["advantage 决定概率调整方向。", "PPO clip 限制更新，不是机器人安全层。"] },
+      { title: "8. 导数、梯度、ODE 与 Euler", paragraphs: ["一维导数表示函数随输入变化多快；多参数 loss 对每个参数的偏导组成 gradient。数值差分用 [L(θ+h)−L(θ−h)]/(2h) 近似梯度，可用来检查手推或代码中的解析梯度，但它不是训练大模型的算法。", "ODE dx/dt=v 表示当前位置的变化率由速度 v 决定。若 x₀=0、恒定 v=2、Δt=0.25，Euler 四步依次得到 0.5、1.0、1.5、2.0。把 Δt 错写为负数，就会走向 −2.0；这就是生成模型中时间方向错误为何不是小问题。"], takeaways: ["gradient 告诉参数往哪改。", "Euler 用局部速度近似一小段连续运动。"] },
+      { title: "9. Diffusion 与 flow 在本课程里怎样连接", paragraphs: ["两者都学习从简单噪声生成动作分布，但训练目标与求解器不同。本课程的 diffusion Toy 在 50 个离散噪声步上预测加入的噪声，再逐步反向采样；flow Toy 学连续速度 vθ(x,t,c)，再用 ODE solver 积分。", "不要从这张入门图推出‘所有 diffusion 都只能离散采样’或‘flow 天然更安全’。现代生成模型还有 probability-flow ODE、不同参数化和多种 solver；真机质量还取决于条件输入、数据、action contract、延迟与控制层。"], takeaways: ["共同目标不代表公式可以混用。", "生成质量与机器人安全是两类问题。"] },
+      { title: "10. 已确认的结论与课程边界", paragraphs: ["【已确认】固定方差高斯 NLL 与加权平方误差只差与均值无关的项；categorical NLL 对 one-hot 标签就是交叉熵；KL、return、advantage estimator、PPO ratio 和 Euler 例子都能由本章脚本复算。", "【合理推测】先统一 shape、unit 和符号能减少实现错误，但本站 Toy 没有统计证明它会提高真实机器人成功率。", "【个人观点】先理解最小可计算例子，再按需要补严格概率论，比一开始堆完整理论更适合这条工程课程。", "【暂无法验证】你的数据噪声、多峰程度、value 质量和最佳 loss 权重仍需用目标数据与 rollout 测量。"], takeaways: ["公式正确不等于建模假设适合数据。", "Toy 验证算术，不验证真实策略效果。"] },
     ],
-    formula: { latex: String.raw`\mathcal L_{\beta\text{-CVAE}}=\mathbb E_{q_\phi(z\mid x,\mathbf A)}[-\log p_\theta(\mathbf A\mid x,z)]+\beta D_{\mathrm{KL}}(q_\phi\|p),\quad A^\pi(s,a)=Q^\pi(s,a)-V^\pi(s),\quad \hat A_t=\hat G_t-\hat V(s_t)`, symbols: [
-      { symbol: "x", meaning: "图像、语言和本体状态条件；不含动作目标。" }, { symbol: "A", meaning: "H×dₐ 动作块监督目标。" }, { symbol: "z", meaning: "动作模式的潜变量。" }, { symbol: "β", meaning: "重建与先验匹配的权衡；仅 β=1 对应标准负 ELBO。" }, { symbol: "A^π", meaning: "策略 π 下的真实 advantage，定义为 Q^π−V^π。" }, { symbol: "Âₜ", meaning: "由采样 return 与 value 估计得到的 advantage estimator。" },
-    ], note: "β=1 时前两项是标准负 ELBO；β≠1 时这里只称 β-CVAE 训练目标。同一个字母 A 在不同文献中可能表示动作块或 advantage；本教程用粗体/上下文区分，写代码时必须使用 action_chunk 与 advantage 两个不同变量名。" },
-    practice: { title: "五段数学最小实验", summary: "运行标准库脚本核对 NLL、KL、advantage estimate、PPO ratio/clip 与 Euler 方向。", steps: ["运行 python public/labs/vla_math_foundations.py。", "逐行复算输出，并把脚本中的 advantages 解释为单轨迹估计 Â。", "手算 0.30/0.25=1.2，经 ε=0.1 裁到 1.1；正优势 0.5 的 clipped surrogate 为 0.55。", "把 flow 的 dt 改成负号，观察终点离开目标。"], acceptance: ["所有手算与脚本一致。", "能说明 A^π=Q^π−V^π 与 Â=Ĝ−V̂ 的区别。", "能解释 PPO clip 限制 surrogate 更新但不构成机器人安全约束。", "能解释错误时间方向。"], status: "已验证", code: "python public/labs/vla_math_foundations.py", expected: ["打印 NLL/MSE、KL、return/advantage estimates、PPO ratio=1.20→1.10、surrogate=0.55 与 Euler endpoint，最后 MATH CHECKS PASS。"], debugging: ["数值不一致先检查 log 的底和 mean/sum reduction。", "advantage estimate 不一致先检查 γ 和终止位置。", "PPO 数值不一致先分清概率比率、clip 区间与 maximize surrogate 的 min。"] },
-    pitfalls: ["把 MSE 当成无假设的真理", "混淆动作 A 与 advantage Aₜ", "忽略 batch/time/action reduction", "把训练时间与采样时间方向混用", "认为 PPO clip 等于安全约束"],
-    review: ["MSE 与高斯 NLL 在什么条件下等价？", "为什么全相同 reward 的组可能没有学习信号？", "CVAE 训练与推理时 encoder 有什么差别？"],
-    completion: "不看答案完成一页符号表、四个数值例，并能在后续章节公式里标出每个张量的 shape、unit 与概率假设。",
-    sources: [{ title: "Auto-Encoding Variational Bayes", url: "https://arxiv.org/abs/1312.6114", role: "ELBO 与重参数化" }, { title: "Deep Conditional Generative Models", url: "https://proceedings.neurips.cc/paper/2015/hash/8d55a249e6baa5c06772297520da2051-Abstract.html", role: "CVAE" }, { title: "ACT", url: "https://arxiv.org/abs/2304.13705", role: "CVAE 动作块应用" }, { title: "Diffusion Policy", url: "https://diffusion-policy.cs.columbia.edu/", role: "动作 diffusion" }, { title: "Flow Matching", url: "https://arxiv.org/abs/2210.02747", role: "连续流目标" }, { title: "PPO", url: "https://arxiv.org/abs/1707.06347", role: "策略更新" }],
+    formula: { latex: String.raw`\begin{aligned}\text{BC: }&\mathcal L_{\mathrm{NLL}}=-\log p_\theta(\mathbf A\mid x)\\\text{CVAE: }&\mathcal L=\mathcal L_{\mathrm{recon}}+\beta D_{\mathrm{KL}}(q_\phi(z\mid x,\mathbf A)\|p(z\mid x))\\\text{RL: }&A^\pi(s,a)=Q^\pi(s,a)-V^\pi(s),\qquad \hat A_t=\hat G_t-\hat V(s_t)\\\text{Flow: }&\frac{d\mathbf A}{d\tau}=v_\theta(\mathbf A,\tau,x)\end{aligned}`, symbols: [
+      { symbol: "x", meaning: "决策时已知的条件，例如图像历史、关节状态和语言。" }, { symbol: "A", meaning: "需要预测的 H×dₐ 动作块；不是输入条件。" }, { symbol: "θ/φ", meaning: "模型中通过训练调整的参数。" }, { symbol: "z", meaning: "用于表示不同动作方式的潜变量。" }, { symbol: "β", meaning: "重建与 prior 匹配的权重；β=1 才对应标准负 ELBO。" }, { symbol: "A^π", meaning: "指定动作相对策略平均水平的真实 advantage。" }, { symbol: "Âₜ", meaning: "用采样 return 和 value 估计得到的数值。" }, { symbol: "vθ", meaning: "flow 模型学习的连续时间速度场。" },
+    ], note: "这四行是一张章节索引，不要求一次背下。先按深挖 1–9 的顺序理解，再回来指出每一行的输入、输出和用途。同一个字母 A 在文献中可能表示动作或 advantage；代码中应写 action_chunk 与 advantage，避免混淆。" },
+    practice: { title: "从一条抓杯样本走完五段手算", summary: "先把概念翻译成中文和具体数字，再运行标准库脚本核对 NLL、KL、advantage、PPO clipping 与 Euler。", steps: ["写下 x={4帧RGB,关节角,‘拿起红杯’}，A 为 3×2 的未来末端增量，并标出 K=4、H=3、dₐ=2。", "用真实动作 1.0、均值 0.6、σ=0.5，手算平方误差 0.16 和高斯 NLL 0.5458。", "用 q=N(0.5,0.8²)、p=N(0,1) 手算 KL≈0.1681，并分别说明重建项与 KL 管什么。", "对 rewards=[0,0,1]、γ=0.9、V̂=[0.6,0.8,0.9]，从后往前算 Ĝ 与 Â。", "手算 0.30/0.25=1.2，经 ε=0.1 截到 1.1，正优势 0.5 的 clipped surrogate 为 0.55。", "手算 x₀=0、v=2、Δt=0.25 的四步 Euler，再运行 python public/labs/vla_math_foundations.py。", "只在临时副本中反转 Euler dt，确认 endpoint 走向错误方向；恢复后保留 PASS 输出。"], acceptance: ["不用术语也能解释 likelihood、KL、advantage 和 ODE 各在解决什么问题。", "所有手算与脚本一致。", "能说明 A^π=Q^π−V^π 与 Â=Ĝ−V̂ 的区别。", "能解释 PPO clip 约束训练更新，但不构成机器人安全约束。", "能从 action_chunk 的 shape 读出 batch、horizon 与动作维度。"], status: "已验证", code: "python public/labs/vla_math_foundations.py", expected: ["打印 NLL/MSE、KL、return/advantage estimates、PPO ratio=1.20→1.10、surrogate=0.55 与 Euler endpoint，最后 MATH CHECKS PASS。"], debugging: ["若概念说不清，先回到抓杯样本，不要继续背符号。", "数值不一致先检查 log 是自然对数以及 mean/sum reduction。", "advantage estimate 不一致先检查 γ 和从后往前递推的顺序。", "PPO 数值不一致先分清旧策略在分母、clip 区间以及 surrogate 的 min。"] },
+    pitfalls: ["第一遍就背整张公式", "把概率、密度和 likelihood 混成同一个口号", "把 MSE 当成没有分布假设的真理", "混淆动作 A 与 advantage Aₜ", "忽略 batch/time/action reduction 和单位", "把训练时间与生成时间方向混用", "认为 PPO clip 等于机器人安全约束"],
+    review: ["p(A|x) 中竖线怎样读？x 和 A 分别是什么？", "为什么训练使用 NLL，而不是直接最大化许多小概率的乘积？", "MSE 与高斯 NLL 在什么条件下有相同最优均值？", "CVAE 的 posterior 为什么训练可用、推理不可直接使用？", "reward、return、V、Q 与 advantage 分别回答什么问题？", "正 advantage 对动作概率意味着什么？", "PPO clip 与机器人动作 clip 有什么区别？", "Euler 更新式中的 Δt 符号为什么重要？"],
+    completion: "能从一条抓杯样本解释九个核心概念，完成五段数值例，并在后续章节公式中标出每个张量的 shape、unit、已知条件和预测目标。",
+    sources: [{ title: "Auto-Encoding Variational Bayes", url: "https://arxiv.org/abs/1312.6114", role: "ELBO 与重参数化" }, { title: "Deep Conditional Generative Models", url: "https://proceedings.neurips.cc/paper/2015/hash/8d55a249e6baa5c06772297520da2051-Abstract.html", role: "CVAE" }, { title: "Reinforcement Learning: An Introduction", url: "http://incompleteideas.net/book/the-book-2nd.html", role: "return、value、advantage 与 policy gradient" }, { title: "ACT", url: "https://arxiv.org/abs/2304.13705", role: "CVAE 动作块应用" }, { title: "Diffusion Policy", url: "https://diffusion-policy.cs.columbia.edu/", role: "动作 diffusion" }, { title: "Flow Matching", url: "https://arxiv.org/abs/2210.02747", role: "连续流目标" }, { title: "PPO", url: "https://arxiv.org/abs/1707.06347", role: "策略更新" }],
     visual: "math",
   },
 
   "act-cvae": {
-    lead: "本章构造的是 language-conditioned ACT-style 课程变体：直接接收上一章的 BC 数据、冻结切分和 K=2、H=16、dₐ=7 动作合同，再把单步回归升级为带潜变量的动作块并融合重叠预测。原始 ACT 不接收语言；这里的 K、H 和 7D 接口也都是贯穿案例的选择，不是原论文默认配置。",
+    lead: "BC 每次只预测下一步时，策略容易频繁抖动，也很难表达一段连贯动作。ACT 改为一次预测未来动作块，并用潜变量表示同一观测下的不同动作方式。本章先用‘单步预测和三步预测有什么区别’解释问题，再进入 CVAE、mask 和 temporal ensemble。课程案例额外加入语言；原始 ACT 不接收语言。",
     objectives: ["在贯穿案例上画出 ACT 训练与推理的两条数据流。", "从条件似然逐步推出 ELBO，并手算 diagonal Gaussian KL。", "写出带 time/action mask 的 H×dₐ reconstruction loss。", "区分 chunk horizon、execution horizon 与 temporal ensemble。", "让 ACT 与后续 VLA 复用同一 action contract、评测器和安全层。"],
     timePlan: [
       { duration: "0:00–0:50", title: "拆训练/推理图", activity: "标出 style encoder 只在训练看到 action。", deliverable: "双色信息流图。" },
@@ -51,6 +60,7 @@ export const supplementalLessonContent = {
       { duration: "3:40–5:00", title: "迁移到统一接口", activity: "让 ACT 与 π₀.₅ 输出同一物理 action contract。", deliverable: "可交换的 PolicyResponse 示例。" },
     ],
     theory: [
+      "先不谈网络结构。普通单步 BC 在时刻 t 输出 aₜ，下一时刻重新预测；ACT 在时刻 t 输出 Aₜ=[aₜ,aₜ₊₁,…,aₜ₊H₋₁]。动作块让模型学习短时间内的轨迹形状，也减少每一步都重新查询大模型的压力，但 H 步并不意味着必须全部开环执行。",
       "沿用全课程案例，一条训练样本包含最近 K=2 帧双相机图像、当前机器人状态 qₜ、语言指令 ℓ，以及未来动作块 Aₜ∈R^{16×7}。这是本站为统一 BC/VLA 接口定义的 language-conditioned ACT-style 变体；原始 ACT 使用图像与当前关节状态，不含语言输入，且其 chunk horizon、观测历史和动作维度应以原论文/固定代码配置为准。",
       "课程变体的训练目标不是单步 (oₜ,aₜ)，而是条件动作块分布 pθ(Aₜ|xₜ)。CVAE encoder 在训练时读取当前状态与真实动作块，产生 qφ(z|x,A)；decoder/Transformer 读取图像、状态、课程新增的语言条件与 z 预测整个动作块。潜变量 z 用来承载同一条件下无法由 x 唯一确定的动作风格或轨迹模式。",
       "推理时没有未来真实动作，因此训练期的 style encoder 被移除。ACT 论文的常用做法把 z 设为零；这意味着训练必须让 decoder 在该推理约定下可用。不能在部署时误把上一段预测当作 ground-truth action 喂入 encoder。",
@@ -59,9 +69,10 @@ export const supplementalLessonContent = {
       "ACT 适合作为窄策略基线：它和后续 VLA 接收相同 PolicyRequest、输出相同 H×7 物理合同，并经过相同 TTL、限幅和评测器。ACT 成功只给出‘这批数据和接口可以学出窄策略’的正证据；如果 VLA 失败，仍需继续区分模型、适配和训练配置。",
     ],
     deepDive: [
-      { title: "1. 训练看得到、推理看不到的信息", paragraphs: ["训练：A_true→style encoder→(μ,logσ²)→z；image/q/z→decoder→Â。推理：没有 A_true，style encoder 被丢弃，z 按实现约定取零或先验样本。", "如果把训练路径原样复制到推理，会产生无法获得的未来信息；如果训练时不检查 z=0 路径，重建很好也可能部署失败。"], takeaways: ["未来动作只属于训练后验。", "推理 z 约定必须与 checkpoint 配套。"] },
-      { title: "2. Chunk 与 temporal ensemble 的时间语义", paragraphs: ["t=10 的模型预测执行时刻 10…19；t=11 又预测 11…20。执行时刻 12 同时有来自 query 10 的第 2 项、query 11 的第 1 项、query 12 的第 0 项。temporal ensemble 对这些候选按预测年龄加权。", "若模型查询晚到 150ms，数组第 0 项可能已经属于过去；必须先按 observation_time 与 action_dt 对齐，再参与融合。"], takeaways: ["融合对象是同一物理执行时刻。", "先做时间对齐，再做权重。"] },
-      { title: "3. 证据边界", paragraphs: ["【已确认】ACT 原论文使用 CVAE 动作块与 temporal ensembling，但没有语言输入；本站 K=2、H=16、dₐ=7 的 language-conditioned ACT-style 变体不是原论文复现。本站脚本只核对 KL、重参数化和融合算术。", "【合理推测】ACT-style baseline 与 VLA 共用接口有助于定位 adapter/执行器错误。", "【个人观点】在 π₀.₅ 前完整做一次窄动作块基线，比直接把 ACT 写成 baseline 名称更适合自学。", "【暂无法验证】你的双臂移动任务所需 H、KL 权重和 ensemble 衰减必须实测。"], takeaways: ["Toy 和课程变体都不是原始 ACT 复现。", "真实超参数不能从教程抄答案。"] },
+      { title: "1. ACT 的三个部件分别解决什么", paragraphs: ["Action chunking：一次预测 H 步，让模型学习一小段轨迹，而不是孤立动作。CVAE：用潜变量 z 表示同一观测下不同但合理的动作方式。Temporal ensemble：连续多次查询会对同一执行时刻给出多个预测，把时间对齐后的候选融合，减少动作跳变。", "三者不能互相替代。Chunk 解决输出时间范围，CVAE 解决条件动作分布，temporal ensemble 处理多次查询的重叠预测。部署时还需要 receding horizon、TTL、限幅和低层控制。"], takeaways: ["先按问题区分三个部件。", "ACT 仍只是策略，不是完整控制与安全系统。"] },
+      { title: "2. 训练看得到、推理看不到的信息", paragraphs: ["训练：A_true→style encoder→(μ,logσ²)→z；image/q/z→decoder→Â。推理：没有 A_true，style encoder 被丢弃，z 按实现约定取零或先验样本。", "如果把训练路径原样复制到推理，会产生无法获得的未来信息；如果训练时不检查 z=0 路径，重建很好也可能部署失败。"], takeaways: ["未来动作只属于训练后验。", "推理 z 约定必须与 checkpoint 配套。"] },
+      { title: "3. Chunk 与 temporal ensemble 的时间语义", paragraphs: ["t=10 的模型预测执行时刻 10…19；t=11 又预测 11…20。执行时刻 12 同时有来自 query 10 的第 2 项、query 11 的第 1 项、query 12 的第 0 项。temporal ensemble 对这些候选按预测年龄加权。", "若模型查询晚到 150ms，数组第 0 项可能已经属于过去；必须先按 observation_time 与 action_dt 对齐，再参与融合。"], takeaways: ["融合对象是同一物理执行时刻。", "先做时间对齐，再做权重。"] },
+      { title: "4. 证据边界", paragraphs: ["【已确认】ACT 原论文使用 CVAE 动作块与 temporal ensembling，但没有语言输入；本站 K=2、H=16、dₐ=7 的 language-conditioned ACT-style 变体不是原论文复现。本站脚本只核对 KL、重参数化和融合算术。", "【合理推测】ACT-style baseline 与 VLA 共用接口有助于定位 adapter/执行器错误。", "【个人观点】在 π₀.₅ 前完整做一次窄动作块基线，比直接把 ACT 写成 baseline 名称更适合自学。", "【暂无法验证】你的双臂移动任务所需 H、KL 权重和 ensemble 衰减必须实测。"], takeaways: ["Toy 和课程变体都不是原始 ACT 复现。", "真实超参数不能从教程抄答案。"] },
     ],
     derivations: [
       {
@@ -127,7 +138,7 @@ export const supplementalLessonContent = {
   },
 
   "post-training": {
-    lead: "‘后训练’不是单一算法名。它可以是继续监督微调、失败纠错、交互式数据聚合、奖励模型加权，或真正的 offline/online RL。应先判断策略是否已有非零能力、反馈是否可信，以及机器人是否允许探索。",
+    lead: "模型完成第一次训练后，仍可能在偏离演示的状态失败。‘后训练’就是利用新增演示、人工纠错、失败结果或在线交互继续改进策略。它不是 RL 的同义词：很多机器人项目应先做 correction SFT 或 DAgger，只有奖励可靠且探索风险可控时才考虑 offline/online RL。",
     objectives: ["区分 pretraining、SFT、correction SFT、offline RL 与 online RL。", "用决策门判断何时不该上 RL。", "构造不污染测试集的失败—纠错—再训练闭环。", "手算 group-relative advantage 与 clip。", "设计 human takeover、reward 与 safety 三条独立通道。"],
     timePlan: [
       { duration: "0:00–1:00", title: "画后训练阶梯", activity: "按数据来源、是否在线、是否需要 reward 分类。", deliverable: "五层方法选择图。" },
@@ -138,16 +149,18 @@ export const supplementalLessonContent = {
       { duration: "5:45–7:00", title: "安全与回归", activity: "建立 canary、冻结回归集与 go/no-go。", deliverable: "后训练实验卡。" },
     ],
     theory: [
+      "先按数据来源区分方法。SFT/BC 学‘专家在这个状态会做什么’；correction SFT 专门加入失败状态上的纠正动作；DAgger 让当前策略先访问自己的状态，再请专家给标签；offline RL 从固定日志中的 reward 学习；online RL 让策略继续与环境交互并收集新反馈。方法越往后，越依赖 reward、分布外估值和现场安全条件。",
       "继续 SFT 使用新的专家、纠错或恢复轨迹，优化目标仍是模仿。DAgger 类方法让当前策略访问自己的状态分布，再由专家标注/接管；它针对 covariate shift，但采集本身可能带风险。HIL 必须记录 policy_action、human_action、executed_action 和 takeover 原因，不能把三者混成一个 action。",
       "奖励可以是终局成功、阶段进度、偏好或人工评分。奖励模型不是事实传感器：遮挡、视觉捷径和 reset 泄漏都可能让 reward 高而任务失败。先用独立标注集报告 precision/recall、按场景分层，并保留人工审计。",
       "Offline RL 只用固定数据，避免在线探索，但会受分布外 action 估值误差影响；online RL 能收集当前策略反馈，却引入硬件磨损、危险探索和非平稳系统。真实机器人上通常应先缩短任务、限制动作、设置接管并从有非零成功率的 SFT policy 起步。",
       "π*0.6 官方报告描述了 offline RL 预训练、任务 SFT 与机器人经验后训练的三阶段，并使用 value/advantage 条件；这证明官方方法链存在，不等于 π0.6 已提供与 openpi π0.5 同等完整的公开权重、配置和部署代码。",
     ],
     deepDive: [
-      { title: "1. 先问四个问题，再选算法", paragraphs: ["基础策略在冻结评测上是否有非零成功？若始终 0%，reward 只告诉失败，group-relative 更新常无方向；先补演示、缩短任务或课程化。", "失败可否由专家纠正？reward 是否可机器可靠判定？能否在仿真或安全沙箱探索？有没有严格冻结的回归集？四问决定优先 correction SFT、reward-weighted BC、offline RL 还是 online RL。"], takeaways: ["RL 不是修 pipeline bug 的工具。", "0% base policy 往往先补能力与数据。"] },
-      { title: "2. 数据不能因为参与后训练就改写历史", paragraphs: ["episode 记录 original_policy_revision、observations、policy_action、executed_action、intervention、reward_source 和 termination。人工接管后的轨迹可以进入 correction train split，但原始冻结 test episode 和成功判据不能回流训练。", "每轮后训练都生成 dataset revision、checkpoint revision、reward model revision 与来源清单。否则提升可能只是测试泄漏或 evaluator 改动。"], takeaways: ["执行动作不一定等于策略动作。", "冻结测试集和 evaluator revision。"] },
-      { title: "3. Group-relative 更新的可用边界", paragraphs: ["同一任务采样 K 个 rollout，得到 R₁:K，以组均值/标准差构造相对 advantage。它降低了对单独 value model 的依赖，但 K 个奖励都相同时分母需稳定化且学习信号接近零。", "对连续动作 VLA，还要定义可训练的 log-probability 或一致 surrogate；不同论文的实现不能仅凭都叫 GRPO 就互换。"], takeaways: ["组内多样性决定信号。", "连续生成头需单独推导训练比率。"] },
-      { title: "4. 证据边界", paragraphs: ["【已确认】LeRobot 文档公开 DAgger/HG-DAgger/HIL-SERL 路线；TorchRL 教程演示 CPU 合成 VLA 的一次 GRPO 风格更新；π*0.6 官方报告三阶段训练。", "【合理推测】你的移动双臂应优先 correction SFT，再考虑 RL，因为全身探索代价更高。", "【个人观点】后训练应按风险从低到高逐级开门，而不是以论文新旧排序。", "【暂无法验证】你的 reward 可观测性、base policy 成功率与安全审批尚未知，因此不能预先指定 RL 算法或承诺提升。"], takeaways: ["方法选择依赖现场证据。", "官方结果不是本站复现。"] },
+      { title: "1. 五种方法的最小区别", paragraphs: ["普通 SFT：收集更多专家成功演示并继续模仿。Correction SFT：专门记录策略失败状态以及专家如何救回来。DAgger/HIL：运行当前策略，专家在它真正访问的状态上标注或接管。Offline RL：不再采新交互，只用固定数据中的 reward/return 更新。Online RL：更新中的策略继续产生新数据。", "选择顺序不由方法新旧决定。若失败主要来自 frame、单位或时序 bug，五种方法都不该先上；若专家能稳定纠错但 reward 很难自动判断，correction SFT 往往比 RL 更直接。"], takeaways: ["先看数据怎样产生，再看算法名称。", "后训练不能修复未排除的执行协议错误。"] },
+      { title: "2. 先问四个问题，再选算法", paragraphs: ["基础策略在冻结评测上是否有非零成功？若始终 0%，reward 只告诉失败，group-relative 更新常无方向；先补演示、缩短任务或课程化。", "失败可否由专家纠正？reward 是否可机器可靠判定？能否在仿真或安全沙箱探索？有没有严格冻结的回归集？四问决定优先 correction SFT、reward-weighted BC、offline RL 还是 online RL。"], takeaways: ["RL 不是修 pipeline bug 的工具。", "0% base policy 往往先补能力与数据。"] },
+      { title: "3. 数据不能因为参与后训练就改写历史", paragraphs: ["episode 记录 original_policy_revision、observations、policy_action、executed_action、intervention、reward_source 和 termination。人工接管后的轨迹可以进入 correction train split，但原始冻结 test episode 和成功判据不能回流训练。", "每轮后训练都生成 dataset revision、checkpoint revision、reward model revision 与来源清单。否则提升可能只是测试泄漏或 evaluator 改动。"], takeaways: ["执行动作不一定等于策略动作。", "冻结测试集和 evaluator revision。"] },
+      { title: "4. Group-relative 更新的可用边界", paragraphs: ["同一任务采样 K 个 rollout，得到 R₁:K，以组均值/标准差构造相对 advantage。它降低了对单独 value model 的依赖，但 K 个奖励都相同时分母需稳定化且学习信号接近零。", "对连续动作 VLA，还要定义可训练的 log-probability 或一致 surrogate；不同论文的实现不能仅凭都叫 GRPO 就互换。"], takeaways: ["组内多样性决定信号。", "连续生成头需单独推导训练比率。"] },
+      { title: "5. 证据边界", paragraphs: ["【已确认】LeRobot 文档公开 DAgger/HG-DAgger/HIL-SERL 路线；TorchRL 教程演示 CPU 合成 VLA 的一次 GRPO 风格更新；π*0.6 官方报告三阶段训练。", "【合理推测】你的移动双臂应优先 correction SFT，再考虑 RL，因为全身探索代价更高。", "【个人观点】后训练应按风险从低到高逐级开门，而不是以论文新旧排序。", "【暂无法验证】你的 reward 可观测性、base policy 成功率与安全审批尚未知，因此不能预先指定 RL 算法或承诺提升。"], takeaways: ["方法选择依赖现场证据。", "官方结果不是本站复现。"] },
     ],
     formula: { latex: String.raw`\hat A_i=\frac{R_i-\bar R}{s_R+\epsilon},\qquad L(\theta)=-\mathbb E\left[\min(\rho_i\hat A_i,\operatorname{clip}(\rho_i,1-\varepsilon,1+\varepsilon)\hat A_i)\right]`, symbols: [
       { symbol: "Rᵢ", meaning: "同任务第 i 个 rollout 的回报。" }, { symbol: "Āᵢ", meaning: "组内标准化相对 advantage。" }, { symbol: "ρᵢ", meaning: "新旧策略对已采样动作的概率比。" }, { symbol: "ε", meaning: "数值稳定项；与 clip 宽度 ε 不应在代码中同名。" },
