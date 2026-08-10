@@ -379,6 +379,7 @@ export const diffusionFlowCourse = {
         { title: "Lecture 1 recording", url: "https://www.youtube.com/watch?v=9eJQQVrUUoI", kind: "video", note: "约 13:30 起；风场/羽毛直觉及 18:10–19:20 的课堂问答" },
         { title: "Official Lab 1: Simulating ODEs and SDEs", url: "https://github.com/eje24/iap-diffusion-labs/blob/2026/labs/lab_one.ipynb", kind: "assignment", note: "Euler、Euler–Maruyama、Brownian、OU、Langevin" },
         { title: "Official Lab 1 solution", url: "https://github.com/eje24/iap-diffusion-labs/blob/2026/solutions/lab_one_complete.ipynb", kind: "code", note: "官方 PyTorch 参考实现" },
+        { title: "本站前置检查：Euler 与 Brownian 方差", url: "/labs/diffusion-flow/ode_sde_euler.py", kind: "code", note: "综合 Lab 1 前的短脚本；用于单独核对步长与 √h 噪声。" },
       ],
     },
     {
@@ -577,6 +578,7 @@ export const diffusionFlowCourse = {
         { title: "Lecture 2 recording", url: "https://www.youtube.com/watch?v=PNkMKWW8Khw", kind: "video", note: "约 15:30–32:00；含未知 pdata、条件场用途与 posterior 加权直觉" },
         { title: "Official Lab 2: Flow Matching and Score Matching", url: "https://github.com/eje24/iap-diffusion-labs/blob/2026/labs/lab_two.ipynb", kind: "assignment", note: "二维 GMM、Gaussian/linear paths、训练与采样" },
         { title: "Official Lab 2 solution", url: "https://github.com/eje24/iap-diffusion-labs/blob/2026/solutions/lab_two_complete.ipynb", kind: "code", note: "官方 PyTorch 参考实现" },
+        { title: "本站前置检查：一维 Conditional Flow Matching", url: "/labs/diffusion-flow/conditional_flow_matching.py", kind: "code", note: "综合二维 GMM 实验前，先核对路径端点、速度与边缘方差。" },
       ],
     },
     {
@@ -758,6 +760,7 @@ export const diffusionFlowCourse = {
         { title: "Lecture 3-A recording", url: "https://www.youtube.com/watch?v=ngC3QnYSVNM", kind: "video", note: "约 20:00–29:00；含 SDE family、噪声/score 直觉及理论与实践差异" },
         { title: "Official Lab 2", url: "https://github.com/eje24/iap-diffusion-labs/blob/2026/labs/lab_two.ipynb", kind: "assignment", note: "conditional score、SDE extension 与 Langevin flow" },
         { title: "Official Lab 2 solution", url: "https://github.com/eje24/iap-diffusion-labs/blob/2026/solutions/lab_two_complete.ipynb", kind: "code", note: "2026 分支含 diffusion coefficient 修正" },
+        { title: "本站前置检查：Gaussian score 与 CFG 系数", url: "/labs/diffusion-flow/score_and_cfg.py", kind: "code", note: "用标量有限差分和边界条件隔离检查两个易错公式。" },
       ],
     },
     {
@@ -1116,6 +1119,7 @@ export const diffusionFlowCourse = {
         { title: "Lecture 4 slides, pp. 2–18", url: "https://diffusion.csail.mit.edu/2026/docs/20260128_Lecture_04_edited.pdf", kind: "slides", note: "180 万维例子、AE 缺口、VAE 与 latent shape" },
         { title: "Lecture 4 recording", url: "https://www.youtube.com/watch?v=g0MB1CCBmsI", kind: "video", note: "约 02:30–58:00；前半讲 latent/VAE，约 56 分钟处讨论压缩的信息损失" },
         { title: "Official Lab 3", url: "https://github.com/eje24/iap-diffusion-labs/blob/2026/labs/lab_three.ipynb", kind: "assignment", note: "MNIST VAE、latent diffusion 与 image-valued conditional path" },
+        { title: "本站前置检查：latent 与 patch shape", url: "/labs/diffusion-flow/latent_patch_shapes.py", kind: "code", note: "综合 DiT/VAE smoke test 前，先验证压缩比例与 patch round trip。" },
       ],
     },
     {
