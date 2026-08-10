@@ -2225,6 +2225,16 @@ input {
 .lesson-section h3 { font-family: var(--font-display); }
 .lesson-section p,
 .lesson-section li { color: #425c63; line-height: 1.92; }
+.concept-explanation-list { display: grid; gap: 18px; margin-top: 28px; }
+.concept-explanation { overflow: hidden; border: 1px solid var(--line); border-radius: 5px; background: var(--white); }
+.concept-explanation > header { display: flex; align-items: baseline; gap: 12px; padding: 17px 20px; border-bottom: 1px solid var(--line); background: #eaf4f4; }
+.concept-explanation > header span { color: var(--coral); font: 800 10px var(--font-utility); letter-spacing: .08em; }
+.concept-explanation > header h3 { margin: 0; font-size: 20px; }
+.concept-explanation dl { margin: 0; }
+.concept-explanation dl > div { display: grid; grid-template-columns: 112px 1fr; gap: 16px; padding: 15px 20px; }
+.concept-explanation dl > div + div { border-top: 1px solid var(--line); }
+.concept-explanation dt { color: var(--blue); font: 750 11px/1.7 var(--font-utility); letter-spacing: .04em; }
+.concept-explanation dd { margin: 0; color: #425c63; font-size: 14px; line-height: 1.85; }
 .check-card,
 .time-plan article,
 .walkthrough-intro,
@@ -2271,6 +2281,10 @@ input {
   .vla-map-band { grid-template-columns: 1fr; gap: 18px; }
   .vla-map-nodes::before { left: 0; }
   .course-operations { grid-template-columns: 1fr; gap: 34px; }
+}
+
+@media (max-width: 620px) {
+  .concept-explanation dl > div { grid-template-columns: 1fr; gap: 4px; }
 }
 
 @media (max-width: 700px) {

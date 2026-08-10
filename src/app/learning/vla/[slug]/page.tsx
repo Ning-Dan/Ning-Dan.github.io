@@ -9,6 +9,7 @@ import { LessonVisual } from "@/components/vla/LessonVisuals";
 import { MathFormula } from "@/components/vla/MathFormula";
 import { ProgressButton } from "@/components/vla/ProgressButton";
 import { getModule, modules, studyGuidance } from "@/lib/course";
+import { lessonConcepts } from "@/lib/lessonConcepts";
 import { lessonContent } from "@/lib/lessonContent";
 import { lessonStudyPlans } from "@/lib/lessonStudyPlans";
 import { lessonWalkthroughs } from "@/lib/lessonWalkthroughs";
@@ -27,8 +28,9 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const courseModule = getModule(slug);
   const lesson = lessonContent[slug];
+  const concepts = lessonConcepts[slug];
   const walkthrough = lessonWalkthroughs[slug];
-  if (!courseModule || !lesson) notFound();
+  if (!courseModule || !lesson || !concepts) notFound();
 
   const guidance = studyGuidance[courseModule.level];
   const studyPlan = lessonStudyPlans[slug];
@@ -64,16 +66,17 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
         <nav className="lesson-toc" aria-label="本章目录">
           <strong>本章目录</strong>
           {(objectives || timePlan) && <a href="#route">0. 学习路线</a>}
-          <a href="#theory">1. 原理主线</a>
+          <a href="#concepts">1. 概念讲解</a>
+          <a href="#theory">2. 原理主线</a>
           {lesson.deepDive?.map((section, index) => (
             <a className="toc-sub" href={`#deep-dive-${index}`} key={section.title}>
               {section.title.replace(/^\d+\.\s*/, "")}
             </a>
           ))}
-          <a href="#math">2. 推导与数值例</a>
-          <a href="#practice">3. 跟着做</a>
-          <a href="#pitfalls">4. 失效模式</a>
-          <a href="#sources">5. 来源与答案</a>
+          <a href="#math">3. 推导与数值例</a>
+          <a href="#practice">4. 跟着做</a>
+          <a href="#pitfalls">5. 失效模式</a>
+          <a href="#sources">6. 来源与答案</a>
         </nav>
 
         <article className="lesson-main">
@@ -103,8 +106,26 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
             </section>
           )}
 
+          <section className="lesson-section" id="concepts">
+            <h2>1. 先把概念讲清楚</h2>
+            <p>每个概念都按“是什么—为什么需要—在机器人任务中怎样出现—适用边界”的顺序展开。读完例子，再进入公式和论文表述。</p>
+            <div className="concept-explanation-list">
+              {concepts.map((concept, index) => (
+                <article className="concept-explanation" key={concept.name}>
+                  <header><span>{String(index + 1).padStart(2, "0")}</span><h3>{concept.name}</h3></header>
+                  <dl>
+                    <div><dt>是什么</dt><dd>{concept.plain}</dd></div>
+                    <div><dt>为什么需要</dt><dd>{concept.why}</dd></div>
+                    <div><dt>放进机器人例子</dt><dd>{concept.example}</dd></div>
+                    <div><dt>边界与误区</dt><dd>{concept.boundary}</dd></div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+          </section>
+
           <section className="lesson-section" id="theory">
-            <h2>1. 完整原理与直觉</h2>
+            <h2>2. 从概念到完整原理</h2>
             {lesson.theory.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
             {lesson.deepDive?.map((section, index) => (
               <div className="deep-dive" id={`deep-dive-${index}`} key={section.title}>
@@ -128,7 +149,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
           </section>
 
           <section className="lesson-section" id="math">
-            <h2>2. 核心推导与数值例</h2>
+            <h2>3. 核心推导与数值例</h2>
             {lesson.derivations && <DerivationSequence derivations={lesson.derivations} />}
             {lesson.derivations && <h3>公式速查</h3>}
             <MathFormula latex={lesson.formula.latex} symbols={lesson.formula.symbols} />
@@ -138,7 +159,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
           </section>
 
           <section className="lesson-section" id="practice">
-            <h2>3. 跟着做：把本章产物交给下一章</h2>
+            <h2>4. 跟着做：把本章产物交给下一章</h2>
             {walkthrough ? (
               <>
                 <GuidedWalkthrough walkthrough={walkthrough} status={lesson.practice.status} />
@@ -168,7 +189,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
           </section>
 
           <section className="lesson-section" id="pitfalls">
-            <h2>4. 常见失效模式</h2>
+            <h2>5. 常见失效模式</h2>
             <div className="pitfall-grid">
               {lesson.pitfalls.map((pitfall, index) => (
                 <div className="pitfall" key={pitfall}>
@@ -180,7 +201,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
           </section>
 
           <section className="lesson-section" id="sources">
-            <h2>5. 来源与带答案自测</h2>
+            <h2>6. 来源与带答案自测</h2>
             <div className="source-list">
               {lesson.sources.map((source) => (
                 <a href={source.url} target="_blank" rel="noreferrer" key={source.url}>
