@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { openCourses } from "@/lib/openCourses";
+import { openCourseLabs } from "@/lib/openCourseLabs";
 
 export const metadata: Metadata = { title: "学习中心", description: "VLA、视觉感知、Diffusion、语言模型与深度强化学习的系统课程。" };
 
@@ -11,12 +12,7 @@ const openCourseMeta: Record<string, { subtitle: string; className: string }> = 
 };
 
 const sourceCourseTracks = openCourses.map((course) => {
-  const labs = new Set(
-    course.chapters.flatMap((chapter) => [
-      ...(chapter.lab?.file ? [chapter.lab.file] : []),
-      ...chapter.sources.filter((source) => source.kind === "code" && source.url.startsWith("/labs/")).map((source) => source.url),
-    ]),
-  ).size;
+  const labs = openCourseLabs[course.slug]?.length ?? 0;
   const meta = openCourseMeta[course.slug] ?? { subtitle: course.provider, className: "foundation" };
   return {
     status: `ACTIVE · ${course.chapters.length} CHAPTERS · ${labs} LABS`,

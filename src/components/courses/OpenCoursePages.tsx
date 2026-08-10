@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MathFormula } from "@/components/vla/MathFormula";
 import { ProgressButton } from "@/components/vla/ProgressButton";
 import type { OpenCourse, OpenCourseChapter } from "@/lib/openCourseTypes";
+import { labViewerHref, openCourseLabs } from "@/lib/openCourseLabs";
 
 const sourceKindLabel = {
   course: "课程主页",
@@ -14,6 +15,7 @@ const sourceKindLabel = {
 } as const;
 
 export function OpenCourseLanding({ course }: { course: OpenCourse }) {
+  const labCount = openCourseLabs[course.slug]?.length ?? 0;
   return (
     <div className={`site-shell open-course-page course-${course.slug}`}>
       <section className="container open-course-hero">
@@ -28,6 +30,7 @@ export function OpenCourseLanding({ course }: { course: OpenCourse }) {
             <p>{course.provenance}</p>
             <p>{course.licenseNote}</p>
             <a href={course.sourceUrl} target="_blank" rel="noreferrer">查看官方课程 ↗</a>
+            {labCount > 0 && <Link href={`/learning/${course.slug}/labs`}>进入实验工坊 · {labCount} 个实验 →</Link>}
           </aside>
         </div>
       </section>
@@ -85,6 +88,7 @@ export function OpenCourseLesson({ course, chapter }: { course: OpenCourse; chap
       ? chapter.lab.file
       : `/${chapter.lab.file.replace(/^public\//, "")}`
     : null;
+  const labPreviewHref = chapter.lab?.file ? labViewerHref(course.slug, chapter.lab.file) : null;
   const slideSources = chapter.sources.filter((source) => source.kind === "slides");
   const companionSources = chapter.sources.filter((source) => source.kind === "assignment" || source.kind === "code");
 
@@ -222,11 +226,13 @@ export function OpenCourseLesson({ course, chapter }: { course: OpenCourse; chap
               ))}
               {companionSources.length > 0 && (
                 <div className="course-companion-links">
-                  {companionSources.map((source) => (
-                    <a href={source.url} target="_blank" rel="noreferrer" key={`${source.kind}-${source.url}`}>
-                      <span>{sourceKindLabel[source.kind]}</span><strong>{source.title} ↗</strong>{source.note && <p>{source.note}</p>}
-                    </a>
-                  ))}
+                  {companionSources.map((source) => {
+                    const isLocalLab = source.url.startsWith("/labs/");
+                    const href = isLocalLab ? labViewerHref(course.slug, source.url) : source.url;
+                    return <a href={href} target={isLocalLab ? undefined : "_blank"} rel={isLocalLab ? undefined : "noreferrer"} key={`${source.kind}-${source.url}`}>
+                      <span>{sourceKindLabel[source.kind]}</span><strong>{source.title} {isLocalLab ? "→" : "↗"}</strong>{source.note && <p>{source.note}</p>}
+                    </a>;
+                  })}
                 </div>
               )}
             </section>
@@ -238,7 +244,10 @@ export function OpenCourseLesson({ course, chapter }: { course: OpenCourse; chap
               <div className="practice-card">
                 <p>{chapter.lab.goal}</p>
                 {labCommand && <div className="code-card"><div className="code-head"><span>运行入口</span><span>CPU / verify</span></div><pre><code>{labCommand}</code></pre></div>}
-                {labHref && <a className="text-link" href={labHref} download>下载本章脚本 →</a>}
+                <div className="open-lab-inline-actions">
+                  {labPreviewHref && <Link className="text-link" href={labPreviewHref}>在线查看源码 →</Link>}
+                  {labHref && <a className="text-link" href={labHref} download>下载本章脚本 ↓</a>}
+                </div>
                 <ol>{chapter.lab.steps.map((step) => <li key={step}>{step}</li>)}</ol>
                 <h3>验收输出</h3>
                 <ul>{chapter.lab.expected.map((item) => <li key={item}>{item}</li>)}</ul>
@@ -255,11 +264,13 @@ export function OpenCourseLesson({ course, chapter }: { course: OpenCourse; chap
           <section className="lesson-section" id="sources">
             <h2>{sourcesNumber}. 原课来源与带答案自测</h2>
             <div className="source-list">
-              {chapter.sources.map((source) => (
-                <a href={source.url} target="_blank" rel="noreferrer" key={`${source.kind}-${source.url}`}>
-                  <span>{sourceKindLabel[source.kind]}</span><strong>{source.title} ↗</strong>{source.note && <p>{source.note}</p>}
-                </a>
-              ))}
+              {chapter.sources.map((source) => {
+                const isLocalLab = source.url.startsWith("/labs/");
+                const href = isLocalLab ? labViewerHref(course.slug, source.url) : source.url;
+                return <a href={href} target={isLocalLab ? undefined : "_blank"} rel={isLocalLab ? undefined : "noreferrer"} key={`${source.kind}-${source.url}`}>
+                  <span>{sourceKindLabel[source.kind]}</span><strong>{source.title} {isLocalLab ? "→" : "↗"}</strong>{source.note && <p>{source.note}</p>}
+                </a>;
+              })}
             </div>
             <h3>先回答，再展开</h3>
             <div className="knowledge-checks">
