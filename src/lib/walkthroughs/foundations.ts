@@ -3,7 +3,7 @@ import type { LessonWalkthrough } from "../lessonWalkthroughTypes";
 export const foundationWalkthroughs = {
   "control-to-vla": {
     intro:
-      "这一节不会只让你‘画闭环、算延迟、跑脚本’，而是带你用一个桌面抓杯任务，从一条经典控制律逐层搭出 VLA 所在的完整系统。你会先分清真实状态、可用观测和动作契约，再手算动作块的时间预算，最后逐段阅读并破坏本地执行器。完成后，你手里应当有一份可以交给另一位工程师实现的闭环接口说明，而不只是几个名词。",
+      "用一个桌面抓杯任务，从经典反馈控制逐层搭出 VLA 所在的完整系统。先分清真实状态、可用观测和动作契约，再手算动作块的时间预算，随后逐段阅读并破坏本地执行器。最终产物是一份可交给另一位工程师实现的闭环接口说明。",
     beforeYouStart: [
       "在项目根目录打开终端；后续命令都从包含 package.json 与 public 文件夹的目录运行。",
       "准备一个文本编辑器。先执行 New-Item -ItemType Directory -Force learning-notes，再新建 learning-notes/control-to-vla.md。",
@@ -51,7 +51,8 @@ export const foundationWalkthroughs = {
           "继续在笔记中建立下面的‘时刻 t 信息清单’，先完整照抄示范行，再填另外五行。",
           "设想夹爪在杯子前方遮住了相机：分别填杯子真实位姿、当前 RGB、关节角 q_t、上一帧 RGB、指令‘拿起红杯’、下一步末端增量。",
           "对每行只允许选择一个主要类别：隐藏状态 s_t、当前观测 o_t、历史 h_t、任务条件 ℓ、动作 a_t。若一个量同时与多类有关，在备注解释，不要重复塞进所有格。",
-          "最后写出 h_t=(o_{t-K+1},...,o_t)，并在 K=4、相机 20 Hz 的条件下算出历史覆盖 0.20 s。这里按 4 帧间隔的教材简化口径；真实系统应明确时间戳和端点定义。",
+          "最后先写完整动作—观测历史 h_t=(o_0,a_0,o_1,a_1,...,a_{t-1},o_t)，再写模型实际使用的有限窗口近似 h̃_t^(K)=(o_{t-K+1:t},a_{t-K+1:t-1})。若实现只输入 K 帧图像，它只是 observation-window 近似，不等于完整 POMDP history。",
+          "在 K=4、相机 20 Hz 下分别计算：4 个观测槽的窗口长度按 K/f 记为 0.20 s，而最早与最晚两帧时间戳之差按 (K-1)/f 为 0.15 s；工程协议必须声明采用哪一种口径，并用真实 timestamp 对齐动作。",
         ],
         code: String.raw`| 信息 | 主要类别 | 决策时是否可用 | 为什么 |
 |---|---|---|---|
@@ -62,19 +63,22 @@ export const foundationWalkthroughs = {
 | “拿起红杯” | ______ | ______ | ______ |
 | 下一步末端增量 | ______ | ______ | ______ |
 
-h_t = ______________________________
-4 帧、20 Hz 的历史覆盖 = __________ s`,
+h_t = (o_0,a_0,o_1,a_1,...,a_{t-1},o_t)
+h̃_t^(K) = ______________________________
+4 帧、20 Hz：窗口长度 K/f = ______ s；首尾 timestamp 跨度 (K-1)/f = ______ s`,
         expected: [
-          "当前 RGB 与关节角属于 o_t；上一帧观测进入 h_t；语言属于任务条件 ℓ；待生成的末端增量属于 a_t。",
+          "当前 RGB 与关节角属于 o_t；上一帧观测和已执行动作共同进入 h_t；语言属于任务条件 ℓ；待生成的末端增量属于 a_t。",
+          "完整 POMDP history 包含过去动作与观测；K 帧输入只是在固定窗口内近似这段历史。4 个 20 Hz 观测槽对应 0.20 s，四个采样点的首尾 timestamp 跨度是 0.15 s。",
           "语言告诉策略‘做什么’，但不会自动补齐杯子被遮挡后的位姿或接触力。",
           "【合理推测】增加合适历史可能帮助判断运动与遮挡；它是否改善某个真实任务，需要数据和 rollout 验证。",
         ],
         checkpoint:
-          "写下一个仅靠单帧会产生歧义、但两帧可能消歧的例子；再写一个即使增加 RGB 历史也未必能消歧、可能需要力觉或深度的例子。",
+          "写下一个仅靠单帧会产生歧义、但结合上一动作与下一观测可能消歧的例子；再写一个即使增加 RGB observation window 也未必能消歧、可能需要力觉或深度的例子。",
         troubleshooting: [
           "若把语言写成 state，检查它是否描述了环境的完整物理配置；多数任务指令只提供目标条件。",
-          "若认为历史越长越好，补算 K 增加后的 token、显存和时间覆盖；历史也会带来延迟与时间对齐问题。",
-          "若 4/20 得到 0.2 s 但你担心首尾跨度是 0.15 s，这是合理的端点歧义；在工程协议中应写清‘4 个采样周期’还是‘4 个采样点的首尾间隔’。",
+          "若把 history 只写成图像帧，补上这些帧之间已执行的动作；否则相同观测变化可能对应不同控制输入。",
+          "若认为窗口越长越好，补算 K 增加后的 token、显存和时间覆盖；history window 也会带来延迟与时间对齐问题。",
+          "若把 0.20 s 与 0.15 s 当成矛盾，检查端点定义：前者是 4 个采样槽，后者是 4 个采样点的首尾差；协议必须选择并记录。",
         ],
       },
       {
@@ -114,9 +118,10 @@ h_t = ______________________________
           "把‘低频模型控制高频机器人’变成带单位的时间预算。你要知道动作块覆盖多长、多久重新观测一次，以及推理尾延迟需要多少尚未执行的动作作为缓冲。",
         actions: [
           "在笔记抄下给定值：动作周期 Δt=0.05 s、预测长度 H=16、每次执行 E=4、伺服频率 1000 Hz。",
-          "逐行计算：f_action=1/Δt；T_chunk=HΔt；T_refresh=EΔt；f_policy=1/T_refresh；每个动作参考对应的伺服 tick 数=f_servoΔt。每一步都写单位。",
+          "逐行计算：f_action=1/Δt；T_chunk=HΔt；T_refresh=EΔt；f_policy=1/T_refresh；每个动作参考对应的伺服 tick 数=f_servoΔt。再画时间轴：20 Hz action reference 每 50 ms 更新一次，理想 5 Hz policy 每 200 ms 取得新观测并发起下一次查询，1 kHz servo 在每个 action reference 内执行 50 个反馈 tick。",
           "再抄下示例尾延迟：推理 p99=0.14 s、网络 p99=0.03 s、工程余量=0.03 s。先相加得到 0.20 s，再算 reserve=ceil(0.20/0.05)=4 个动作。",
-          "在结果旁标注：分项 p99 相加只是保守启发式，不是端到端 p99 的统计恒等式；真实部署必须测同一请求边界的端到端分布。",
+          "在 t_0 收到一个 H=16 的 chunk 后执行前 E=4 项，并在 t_0+0.20 s 用新观测发起查询；等待期间旧 chunk 还剩 H-E=12 个动作槽。写出可行性门禁 H-E≥R，本例 12≥4。若不满足，chunk 在估计响应到达前就会耗尽。",
+          "在结果旁标注：分项 p99 相加只是启发式，不是端到端 p99 的统计恒等式。若各阶段尾部不同时发生或存在流水线重叠，它可能高估；若漏掉排队、序列化、调度抖动、时钟误差或共享资源竞争，它也可能低估。真实部署必须测同一请求边界的端到端分布。",
         ],
         code: String.raw`Δt = 0.05 s
 H = 16
@@ -129,17 +134,25 @@ T_refresh = E×Δt = ______ s
 f_policy(理想) = 1/T_refresh = ______ Hz
 servo ticks/action = f_servo×Δt = ______
 
-reserve = ceil((0.14+0.03+0.03)/0.05) = ______ actions`,
+时间轴：
+- action reference: t_0, t_0+0.05, t_0+0.10, ...（20 Hz）
+- next observation/query: t_0+EΔt = ______ s（理想 5 Hz）
+- servo ticks in each action slot: ______（1 kHz）
+
+reserve R = ceil((0.14+0.03+0.03)/0.05) = ______ actions
+remaining suffix = H-E = ______ actions
+feasibility gate: H-E >= R ? ______`,
         expected: [
-          "答案依次为 20 Hz、0.8 s、0.2 s、5 Hz、50 ticks/action、4 actions。",
-          "H 决定预测覆盖，E 决定理想重查询间隔；预测 16 步不等于必须开环执行 16 步。",
+          "答案依次为 20 Hz、0.8 s、0.2 s、5 Hz、50 ticks/action、R=4、H-E=12，且 12≥4。",
+          "H 决定预测覆盖，E 决定理想重查询时刻；在 t_0+EΔt 发起新查询后，旧 chunk 的 H-E 后缀为响应延迟提供动作储备。预测 16 步不等于必须开环执行 16 步。",
           "若新 chunk 在队列耗尽前没有到达，执行层必须进入预先定义的 fallback，而不能重放旧动作。",
         ],
         checkpoint:
-          "不看公式，重新计算 H=10、E=2、Δt=0.1 s 时的覆盖时间、理想查询频率；再解释为什么查询频率不一定在真实系统中精确达到该值。",
+          "不看公式，重新计算 H=10、E=2、Δt=0.1 s 时的覆盖时间、理想查询频率和 H-E；若端到端延迟预算为 0.9 s，再算 R 并判断 H-E≥R 是否成立。",
         troubleshooting: [
           "若得到 0.05 Hz，检查频率与周期是否取了倒数。",
           "若 reserve 得到 0.04，检查延迟与动作周期是否都以秒为单位，并记得向上取整。",
+          "若只比较 H 与 R，补上已经执行的 E 项；真正可用于等待下一响应的是 H-E。",
           "若把 p99 当平均值，回到定义：p99 是样本分布的高分位尾部指标；还应同时记录样本数和测量边界。",
         ],
       },
@@ -247,12 +260,14 @@ python learning-notes/chunked_controller_work.py`,
         actions: [
           "在笔记末尾复制下面的请求/响应模板，并用本章练习值填满所有 TODO。",
           "将 action_dt 填 0.05 s、horizon 填 16；command_type 写 eef_delta_pose；frame 先选 base，并明确 rotation 表示与单位。若你的真实平台未知，就把平台专属项标为待确认，不能猜。",
-          "在 client_checks 中按顺序写 schema→shape→finite→timestamp/TTL→frame/unit→反归一化→限幅/工作空间→执行。",
+          "为请求和响应填写同一个 clock_id；只有同一时钟域或经过明确换算的时间戳才能直接相减。用 based_on_observation_time_s 检查观测新鲜度，用 action_start_time_s+h×action_dt_s 排程第 h 个动作；两者不能混成一个 timestamp。",
+          "在 client_checks 中按顺序写 schema→shape→finite→clock domain→observation freshness/TTL→action schedule→frame/unit→反归一化→限幅/工作空间→执行。",
           "最后从任务指令开始，用五层闭环口述一次请求如何产生、验证、执行和反馈；把口述中卡住的字段补回模板。",
         ],
         code: String.raw`request:
   schema_version: "v1"
   request_id: 42
+  clock_id: "robot_monotonic_v1"
   observation_time_s: TODO
   camera_names: [base, wrist]
   joint_order: TODO
@@ -263,7 +278,9 @@ python learning-notes/chunked_controller_work.py`,
 
 response:
   request_id: 42
+  clock_id: "robot_monotonic_v1"
   based_on_observation_time_s: TODO
+  action_start_time_s: TODO
   command_type: eef_delta_pose
   frame: base
   translation_unit: m
@@ -276,29 +293,31 @@ response:
 
 client_checks:
   - schema / shape / finite
-  - timestamp order / TTL
+  - clock_id matches an agreed clock domain
+  - observation freshness: now - based_on_observation_time_s <= TTL
+  - schedule action h at action_start_time_s + h*action_dt_s
   - frame / unit / normalization revision
   - step, speed, workspace and collision constraints
   - execute or deterministic fallback`,
         expected: [
           "你最终得到一张五层闭环表、一页时间预算、两条故障记录和一份可版本化 action contract。",
-          "contract 同时声明 shape、时间、frame、unit、归一化版本与有效期，而不是只有一个 actions 数组。",
+          "contract 同时声明 shape、clock_id、观测依据时间、动作起始时间、frame、unit、归一化版本与有效期，而不是只有一个 actions 数组。",
           "你能明确说出 VLA 负责条件动作候选，独立执行层负责协议校验、实时保护和 fallback。",
         ],
         checkpoint:
-          "让自己在不看页面的情况下回答：H、E、Δt、observation_time、TTL、frame 各解决什么问题？任意一个答不出，就回到对应步骤补笔记。",
+          "让自己在不看页面的情况下回答：H、E、Δt、clock_id、observation_time、action_start_time、TTL、frame 各解决什么问题？任意一个答不出，就回到对应步骤补笔记。",
         troubleshooting: [
           "如果 rotation_representation 不知道填什么，保留 TODO 并列出需要平台文档确认的问题；未知比错误默认值安全。",
-          "如果 expires_at 只写‘180ms’，补上它相对哪个时间戳；本章脚本相对 observation_time 判断 age。",
+          "如果 expires_at 只写‘180ms’，补上它属于哪个 clock_id、相对哪个时间戳；本章脚本相对 observation_time 判断 freshness，而 action_start_time 单独决定排程。",
           "如果 contract 没有反归一化版本，模型输出即使 shape 正确也可能被错误缩放。",
         ],
       },
     ],
     finalArtifact: [
       "learning-notes/control-to-vla.md：包含符号落地表、POMDP 信息清单和五层闭环责任表。",
-      "一份带单位的 H/E/Δt/servo/p99 时间预算，且注明分项 p99 相加只是工程启发式。",
+      "一份带单位的 H/E/Δt/servo/p99 时间轴，包含 H-E≥R 门禁，且注明分项 p99 相加可能高估或低估端到端尾延迟。",
       "默认执行器完整输出，以及 max_step、TTL 两次受控破坏的故障记录。",
-      "一份含时间戳、frame、unit、shape、normalization revision、TTL 与 fallback 的 action contract。",
+      "一份含 clock_id、observation/action_start 时间戳、frame、unit、shape、normalization revision、TTL 与 fallback 的 action contract。",
     ],
     verifiedBoundary:
       "【已确认】公式计算和 public/labs/chunked_controller.py 的默认输出可在本机复现；【合理推测】真实 VLA 同样需要动作契约、尾延迟和过期保护；【个人观点】先系统边界、后模型细节是本教程建议的学习顺序；【暂无法验证】Toy 没有真实相机、网络时钟、动力学、碰撞或急停，不能证明任何真机安全性，也不能给出你的平台应使用的 TTL、限幅或停止策略。",
@@ -316,7 +335,7 @@ client_checks:
       {
         question: "为什么 observation_time 比只用 request_id 更关键？",
         answer:
-          "request_id 只能关联逻辑请求，不能说明生成动作依据的物理观测有多旧。observation_time 允许客户端计算 age、拒绝乱序/过期结果，并把动作与真实状态时刻对齐。",
+          "request_id 只能关联逻辑请求，不能说明生成动作依据的物理观测有多旧。observation_time 在共同 clock_id 下允许客户端计算 freshness、拒绝乱序/过期结果；它不等于动作排程时间，首个参考何时生效应由 action_start_time 单独声明。",
       },
       {
         question: "脚本的 hold position 为什么不能被称作通用安全停止？",
@@ -328,7 +347,7 @@ client_checks:
 
   history: {
     intro:
-      "这一章不要求你背模型年份。你会亲手制作一张‘问题如何变化’的可审计地图：先填动作学习基础，再比较 RT-1 与 RT-2，接着处理跨本体数据和连续动作路线，最后给每条结论标注事实、推测、观点或未验证。表格模板和示范行都在本页，即使暂时不读外部综述，也能完成主体练习；原始论文/项目页只用于进一步核对来源。",
+      "本章的产物是一张‘问题如何变化’的证据地图：从动作学习基础、RT-1/RT-2，一直梳理到跨本体数据和连续动作路线。每条结论都要标成事实、推测、观点或未验证。页面已给出模板和示范行；原始论文与项目页用于核对来源。",
     beforeYouStart: [
       "在项目根目录的 learning-notes 文件夹中新建 vla-history-audit.md；没有该文件夹时先执行 New-Item -ItemType Directory -Force learning-notes。",
       "准备四种证据标签：A=论文方法/表格或官方代码可直接核对，B=官方项目页演示/作者说明，C=基于 A/B 的合理推测，D=你自己实际复现。",
@@ -601,7 +620,7 @@ client_checks:
 
   "behavior-cloning": {
     intro:
-      "这一节会从脚本第一条数据开始带你做完 Behavior Cloning，而不是让你直接运行后看 PASS。你会手算标签、手算一次梯度、逐函数跟踪训练和 rollout，复制脚本做两次有目的的破坏，再解释 DAgger 为什么改变闭环状态分布。所有实验只用 Python 标准库。",
+      "从脚本第一条数据开始完成 Behavior Cloning：手算标签和一次梯度，逐函数跟踪训练与 rollout，再在副本上做两次有目的的破坏。最后用访问状态分布的变化解释 DAgger。所有实验只用 Python 标准库。",
     beforeYouStart: [
       "在项目根目录运行 python --version；建议 Python 3.10+，本章不需要 PyTorch、GPU 或下载数据。",
       "新建 learning-notes/behavior-cloning.md；没有 learning-notes 时先执行 New-Item -ItemType Directory -Force learning-notes。",
@@ -804,23 +823,23 @@ expert action = clip(-0.8×1.2, -0.45, 0.45) = ______`,
         ],
       },
       {
-        title: "第 7 步：故意删掉恢复特征，看 DAgger 为什么会失效",
+        title: "第 7 步：故意删掉状态表达，看 DAgger 为什么会失效",
         goal:
           "数据覆盖和模型输入能力缺一不可。即使收到了恢复状态，如果特征无法表达状态差异，聚合数据也未必修复闭环。",
         actions: [
           "重新从 public/labs 复制干净脚本到 work 副本。",
-          "在 work 副本中找到 recovery_features，把 return [state, outside, 1.0] 改成 return [state, 0.0, 1.0]；保留 outside 的计算也可以。",
-          "运行 python learning-notes/toy_behavior_cloning_work.py。预期 DAgger 段的 after_successes==6 断言失败，或至少前后改善不再符合默认断言。",
-          "记录第一条失败断言，并解释：新样本虽加入，但策略不再能使用专门描述分布外程度的特征，只能用单一线性 state 项折中。",
+          "在 work 副本中找到 recovery_features，把 return [state, outside, 1.0] 改成 return [0.0, 0.0, 1.0]；这里只保留常量 bias，故意同时清零 state 与 outside。",
+          "运行 python learning-notes/toy_behavior_cloning_work.py。当前固定脚本会在 DAgger 段的 after_successes==6 断言失败，实际 after_successes 为 0。",
+          "记录第一条失败断言，并解释：新样本虽加入，但策略只看到常量输入，无法区分正负状态或恢复幅度；这证明的是这个特定 Toy 中数据覆盖仍需要足够的状态表示。",
           "从原脚本再次覆盖工作副本，运行确认 ALL CHECKS PASSED。",
         ],
         code: String.raw`# 原版
 return [state, outside, 1.0]
 
-# 故意破坏表示能力
-return [state, 0.0, 1.0]`,
+# 故意破坏表示能力：同时移除 state 与 outside
+return [0.0, 0.0, 1.0]`,
         expected: [
-          "故意破坏后默认 DAgger 验收不能通过；恢复特征后重新通过。",
+          "故意破坏后 after_successes==6 断言以实际值 0 失败；恢复特征后重新通过。",
           "你应得出更窄的结论：DAgger 改善训练状态覆盖，但模型表示、优化和专家标签仍要足够。",
           "失败记录包含改动、断言、机制和恢复，不是只有一张 traceback 截图。",
         ],
@@ -828,7 +847,7 @@ return [state, 0.0, 1.0]`,
           "完成句子：只增加数据仍不够，因为 ______；只增加模型能力仍不够，因为 ______。",
         troubleshooting: [
           "若错误出现在更早位置，确认只改 recovery_features，没有误改 make_supervised_data。",
-          "若仍然意外 PASS，检查运行路径；用 Select-String -Path learning-notes/toy_behavior_cloning_work.py -Pattern 'return \[state' 查看实际内容。",
+          "若仍然意外 PASS，检查运行路径；用 Select-String -Path learning-notes/toy_behavior_cloning_work.py -Pattern 'return \[' 确认实际返回 [0.0,0.0,1.0]。只清零 outside 仍保留 state，当前 Toy 依然可能达到 6/6，因此不是本步的故障注入。",
           "若想探索别的破坏，一次只改一个变量，并在实验后从原文件恢复。",
         ],
       },
@@ -898,7 +917,7 @@ dL/dμ = _______________
 
   "multimodal-transformer": {
     intro:
-      "这一节从五个可见的 toy token 出发，带你建立图像、语言、状态和动作的 tensor contract，手算 action_0 对每个 key 的注意力分数，画出三种 mask，然后改坏代码让未来标签泄漏断言真正触发。完成后你应能从一个模型图还原输入顺序、信息流和动作接口，而不是只会复述 Attention 公式。",
+      "从五个可见的 toy token 出发，建立图像、语言、状态和动作的 tensor contract。随后手算 action_0 对每个 key 的注意力分数，画三种 mask，并故意触发未来标签泄漏断言。完成后应能从模型图还原输入顺序、信息流和动作接口。",
     beforeYouStart: [
       "确认项目根目录下存在 public/labs/attention_mask_leakage.py，并准备 learning-notes/multimodal-transformer.md。",
       "执行 Copy-Item public/labs/attention_mask_leakage.py learning-notes/attention_mask_leakage_work.py；主动破坏只改副本。",

@@ -3,7 +3,7 @@ import type { LessonWalkthrough } from "../lessonWalkthroughTypes";
 export const systemWalkthroughs = {
   pi05: {
     intro:
-      "这一带练不要求你先有 GPU。核心路线会带你亲手建立证据卡、画出 π₀.₅ 的双路径、跑通一个本地 flow 模型并做一次有预期结果的改动；云端路线被明确隔离为选做。完成后，你应能说清论文报告了什么、公开代码提供了什么、你自己实际验证了什么。",
+      "核心路线不需要 GPU：建立证据卡，画出 π₀.₅ 的双路径，跑通本地 flow 模型，再做一次有预期结果的改动。云端路线单列为选做。验收时要能分清论文报告、公开代码和本人实测。",
     beforeYouStart: [
       "在个人网站仓库根目录打开 PowerShell；下面所有路径都相对仓库根目录。",
       "核心部分只需要 Python 3.10+ 和文本编辑器，不需要 GPU、机器人或下载 checkpoint。",
@@ -74,29 +74,28 @@ checked_at: 2026-08-08
           "新建 work/pi05/dataflow.md，复制下面的 Mermaid 图。",
           "用一个具体任务替换方括号：例如原任务“整理桌面”，semantic action“拿起红杯”，低层输出写 H×dₐ action chunk。",
           "在图下写一句检验语句：如果某模块没有预测 action-conditioned future state，它就不能仅因输出文字步骤而被称为 world model。",
-          "沿箭头口述一次：原任务 ℓ 不应在生成低层动作时被无理由丢掉。",
+          "沿箭头口述一次：按 π₀.₅ 论文的形式化，高层调用以 (oₜ,ℓ) 生成 ℓ̂ₜ；低层调用再以 (oₜ,ℓ̂ₜ) 生成动作。不要把一般链式分解和论文采用的条件独立建模混写。",
         ],
         code: String.raw`# π₀.₅ 数据流
 
 flowchart LR
-  O[多相机观测 o_t + proprio] --> V[VLM prefix]
-  L[原任务 l：整理桌面] --> V
-  V --> S[semantic action l_hat_t：拿起红杯]
-  V --> F[flow action expert]
+  O[多相机观测 o_t + proprio] --> H[同一模型：高层调用]
+  L[原任务 l：整理桌面] --> H
+  H --> S[semantic action l_hat_t：拿起红杯]
+  O --> F[同一模型：低层 flow 调用]
   S --> F
-  L --> F
   F --> A[连续动作块 A_t，shape = H x d_a]
 
 边界：这张图没有 action-conditioned future-state prediction，因此不能据此把 semantic action 称为 world model。`,
         expected: [
-          "图中原任务 ℓ、观测 oₜ 和 semantic action ℓ̂ₜ 都进入低层动作路径。",
+          "图中原任务 ℓ 进入高层语义路径；低层动作路径按论文只接收 oₜ 与 semantic action ℓ̂ₜ。",
           "输出 action chunk 明确写出 H×dₐ，而不是含糊写“机器人动作”。",
           "图中没有凭空出现 future state 或 reward。",
         ],
         checkpoint: "你能指出 semantic action、continuous action 和 future-state prediction 三者分别回答什么问题。",
         troubleshooting: [
           "若 Mermaid 不渲染，先保留文本和箭头关系；这一步验收的是因果/条件结构，不是绘图软件。",
-          "若你想删掉原任务到 flow expert 的箭头，必须额外写明条件独立假设；否则保留它。",
+          "若另一个实现让低层动作继续直接接收原任务 ℓ，应把它标为不同于论文该分解的实现选择，而不是冒充 π₀.₅ 原式。",
         ],
       },
       {
@@ -106,15 +105,15 @@ flowchart LR
           "新建 work/pi05/factorization.md，先复制公式，再填入下面给出的整理桌面示例。",
           "第一行写已知条件：oₜ 中看见红杯、托盘和机械臂状态，ℓ 是“整理桌面”。",
           "第二行写高层采样：模型先产生 ℓ̂ₜ=“拿起红杯”。",
-          "第三行写低层条件：动作块仍以 oₜ、ℓ、ℓ̂ₜ 为条件；不要把原任务自动删掉。",
+          "第三行写低层条件：按论文分解，动作块以 oₜ、ℓ̂ₜ 为条件；原任务 ℓ 先通过高层项影响 ℓ̂ₜ。",
           "最后写一个反例：若 ℓ̂ₜ 错成“推开托盘”，即使低层动作平滑，也可能完成错误目标。",
         ],
         code: String.raw`p(A_t, l_hat_t | o_t, l)
-= p(l_hat_t | o_t, l) * p(A_t | o_t, l, l_hat_t)
+= p(A_t | o_t, l_hat_t) * p(l_hat_t | o_t, l)
 
 已知：o_t = [红杯位置、托盘位置、机械臂状态]；l = “整理桌面”
 高层：l_hat_t = “拿起红杯”
-低层：A_t ~ p(A_t | o_t, “整理桌面”, “拿起红杯”)
+低层：A_t ~ p(A_t | o_t, “拿起红杯”)
 
 反例：l_hat_t 错成“推开托盘”时，低层动作即使连续且无 NaN，也可能服务于错误子目标。`,
         expected: [
@@ -122,9 +121,9 @@ flowchart LR
           "每个符号都能对应到示例中的具体信息。",
           "你写出一个“低层数值正常但语义失败”的反例。",
         ],
-        checkpoint: "不看原文，能从概率乘法规则重新写出分解，并说明为什么低层仍保留原任务条件。",
+        checkpoint: "不看原文，能写出 π₀.₅ 论文采用的分解，并区分它与保留原任务 ℓ 的一般链式分解。",
         troubleshooting: [
-          "若把等式写成两个互不相关概率相加，回到联合概率的链式法则：p(x,y|c)=p(y|c)p(x|y,c)。",
+          "若把等式写成两个互不相关概率相加，先回到联合概率链式法则；再注明论文额外采用 Aₜ⊥ℓ | (oₜ,ℓ̂ₜ)，从低层条件中去掉 ℓ。",
           "若示例只有名词没有观测，补上相机/状态；动作不是仅由语言生成。",
         ],
       },
@@ -262,8 +261,8 @@ reason:
       "本站已验证的是 public/labs/flow_matching_1d.py 的特制 1D 条件 transport 与 ODE 符号检查。π₀.₅ 架构主张来自官方项目页/论文，公开实现能力绑定 2026-08-08 的 openpi commit 15a9616 快照；本站没有替学习者运行 checkpoint、LIBERO、微调或真机，因此性能、资源需求和硬件兼容性必须保留为暂无法验证，直到出现个人日志。",
     knowledgeCheck: [
       {
-        question: "为什么 p(Aₜ,ℓ̂ₜ|oₜ,ℓ) 的低层项仍保留原任务 ℓ？",
-        answer: "链式法则自然得到 p(ℓ̂ₜ|oₜ,ℓ)p(Aₜ|oₜ,ℓ,ℓ̂ₜ)。只有额外假设在给定观测和子任务后 Aₜ 与原任务条件独立，才可删掉 ℓ；教程没有默认这个额外假设。",
+        question: "π₀.₅ 论文为什么把低层项写成 p(Aₜ|oₜ,ℓ̂ₜ)，而不是继续保留原任务 ℓ？",
+        answer: "论文采用 Aₜ⊥ℓ | (oₜ,ℓ̂ₜ) 的建模分解：原任务先决定 semantic action，低层再根据观测和该子任务生成动作。保留 ℓ 的式子是更一般的链式分解，但不是论文给出的原式。",
       },
       {
         question: "semantic action 为什么不自动等于 world model？",
@@ -1182,11 +1181,11 @@ next smallest experiment:
 
   "frontier-and-deployment": {
     intro:
-      "这一带练把“部署”落到 robot client 眼前会收到的一条消息：先写协议，再手算队列 reserve，运行 schema/乱序/TTL/watchdog 故障，新增两个错误用例，改一个 TTL 参数观察状态机变化，最后才建立真实服务迁移表。前沿论文放在选做索引，不能替代部署必修。",
+      "从 robot client 收到的一条消息开始学习部署：写协议，手算队列 reserve，运行 schema、乱序、TTL 和 watchdog 故障，再增加两个错误用例并观察 TTL 如何改变状态机。完成这些检查后再建立真实服务迁移表。前沿论文放在选做索引。",
     beforeYouStart: [
       "在仓库根目录打开 PowerShell；Python 3.10+ 标准库即可，不需要网络、GPU 或机器人。",
-      "本章所有动作都是 2D Toy delta；脚本不含机器人动力学、IK、碰撞、硬件急停或安全认证。",
-      "先不要连接真机。真实设备必须另有独立急停、人工接管、低层限速/限力和经批准的风险流程。",
+      "本章所有动作都是 2D Toy delta；脚本不含机器人动力学、IK、碰撞、独立 emergency-stop function 或安全认证。",
+      "先不要连接真机。真实设备必须另有独立且满足目标风险要求的 emergency-stop function、人工接管、低层限速/限力和经批准的风险流程。",
       "p99 示例只有 10 个样本，用于验证算法，不是生产延迟估计。",
     ],
     steps: [
@@ -1197,7 +1196,7 @@ next smallest experiment:
           "创建 work/deployment/boundaries.md，复制四段图。",
           "在每条箭头上写可能故障：延迟、重复、乱序、断连、时钟偏差。",
           "在 robot client 下写 MUST：即使 server 声称已检查，client 仍验证 schema、time、finite、frame/unit、限幅。",
-          "在 hardware 下分别写 controlled stop 与 E-stop；不得把软件 hold 叫硬件急停。",
+          "在 hardware/independent safety 下分别写 controlled stop 与 emergency-stop function；不得把软件 hold 叫 E-stop。",
         ],
         code: String.raw`New-Item -ItemType Directory -Force work/deployment | Out-Null
 @'
@@ -1206,14 +1205,15 @@ observation -> [Policy server] -> response -> [Transport] -> [Robot client] -> s
 Policy server: 产生候选动作；不是最终安全权威
 Transport faults: delay / duplicate / reorder / loss / disconnect / clock mismatch
 Robot client MUST: schema -> request/time -> finite -> revision -> frame/unit -> denorm -> limits -> fallback
-Trajectory/Servo/Hardware: tracking + independent limits + operator takeover + hardware E-stop
+Trajectory/Servo/Hardware: tracking + independent limits + operator takeover
+Independent safety: emergency-stop function satisfying target risk requirements
 
-术语：CONTROLLED_STOP = 软件受控停止/保持；E-STOP = 独立硬件急停，二者不可混称。
+术语：CONTROLLED_STOP = 软件受控停止/保持；E-STOP = 独立、满足目标风险要求的 emergency-stop function，二者不可混称。
 '@ | Set-Content -Encoding utf8 work/deployment/boundaries.md`,
         expected: [
           "robot client 明确保留最终软件拒绝权。",
           "transport 不被假定可靠、有序或零延迟。",
-          "controlled stop 与硬件 E-stop 是两个不同框。",
+          "controlled stop 与独立 emergency-stop function 是两个不同框。",
         ],
         checkpoint: "你能指出 server 生成了“看起来合理”的动作后，client 仍必须独立检查的至少六项。",
         troubleshooting: [
@@ -1225,58 +1225,69 @@ Trajectory/Servo/Hardware: tracking + independent limits + operator takeover + h
         title: "第 2 步：写一条可被拒绝的 response contract",
         goal: "让版本、时间、物理语义和动作 shape 都成为显式字段。",
         actions: [
-          "新建 response-example.json，复制脚本中的一条合法 response。",
-          "逐字段解释 request_id、observation_time_ms、action_dt_ms、command_type、frame、unit 和 actions。",
-          "在 contract-notes.md 补生产建议字段：model_revision、normalization_revision、rotation convention、valid mask、server_created_time。",
+          "新建 response-example.json，以脚本中的合法 response 为基线，补成下面的生产协议示例。",
+          "逐字段解释 request_id、based_on_observation_time_ms、clock_id、action_start_time_ms、action_dt_ms、command_type、frame、unit、valid 和 actions。",
+          "在 contract-notes.md 说明：观测时间用于 freshness，action_start_time 用于动作调度；两者不得复用。model/norm/action contract revision 与 rotation convention 也必须显式。",
           "写拒绝策略：未知 schema/norm/action revision 默认 reject，不猜测兼容。",
         ],
         code: String.raw`{
   "schema_version": "v1",
   "request_id": 7,
-  "observation_time_ms": 1000,
+  "based_on_observation_time_ms": 1000,
+  "clock_id": "robot-monotonic-ms",
+  "action_start_time_ms": 1000,
   "action_dt_ms": 50,
   "command_type": "eef_delta",
   "frame": "base",
   "linear_unit": "m",
-  "actions": [[0.01,-0.01],[0.02,-0.02],[0.20,-0.20],[0.03,-0.03],[0.01,-0.01]]
+  "rotation_convention": "none-2d-toy",
+  "model_revision": "toy-policy-v1",
+  "normalization_revision": "physical-v1",
+  "action_contract_revision": "eef-delta-2d-v1",
+  "actions": [[0.01,-0.01],[0.02,-0.02],[0.20,-0.20],[0.03,-0.03],[0.01,-0.01]],
+  "valid": [[true,true],[true,true],[true,true],[true,true],[true,true]]
 }
 
-生产补充（脚本未实现）：model_revision、normalization_revision、rotation_convention、valid、server_created_time。
+实现边界：当前 Toy dataclass 未携带 model_revision 与 rotation_convention；生产协议仍必须包含并验证它们。
 默认规则：任何未知 revision => REJECT，不自动猜字段。`,
         expected: [
-          "一条 response 可以被 request_id、观测年龄和 action_dt 唯一解释。",
+          "一条 response 的 freshness 可由 based_on_observation_time 解释，动作绝对调度由 action_start_time+i×action_dt 解释。",
           "动作明确为 base-frame EEF delta，线性单位 m。",
           "你能区分脚本已实现字段与生产建议字段。",
         ],
-        checkpoint: "若只给 actions 数组不给 observation_time/frame/unit，你能解释 client 为什么不应执行。",
+        checkpoint: "若只给 actions 数组，不给 based_on_observation_time/clock_id/action_start_time/type/frame/unit/valid/revisions，你能解释 client 为什么不应执行。",
         troubleshooting: [
           "若真实系统使用秒而协议写毫秒，必须在 schema/version 层修正，不在执行器中凭数值大小猜。",
           "若 response 有混合平移/旋转/夹爪，给每类维度独立 unit/semantics 和 valid mask。",
         ],
       },
       {
-        title: "第 3 步：先手算 p99 reserve，再运行代码",
-        goal: "理解为什么 190+55+30ms、50ms/action 得到 6，而不是凭感觉设置队列。",
+        title: "第 3 步：先手算 p99 reserve 与队列可行性，再运行代码",
+        goal: "区分 component p99 启发式与实测 end-to-end p99，并用 H−E≥R 检查 chunk 是否能覆盖补队列预算。",
         actions: [
-          "把脚本的 10 个 inference 与 network 样本分别排序；最近秩 p99 在 10 个样本中取第 ceil(.99×10)=10 个。",
-          "得到 inference p99=190ms、network p99=55ms。加 margin=30ms，总计 275ms。",
-          "计算 reserve=ceil(275/50)=ceil(5.5)=6，写入 latency-math.md。",
-          "写边界：组件 p99 直接相加是保守工程启发式，不是 end-to-end p99 统计恒等式；生产应直接测端到端尾延迟。",
+          "把脚本的 inference、network 与 end-to-end 三组各 10 个样本分别排序；最近秩 p99 在本 Toy 中都取第 ceil(.99×10)=10 个。",
+          "得到 inference p99=190ms、network p99=55ms、end-to-end p99=270ms。组件和加 margin 得 275ms；实测端到端加 margin 得 300ms。两者本例都向上取整为 reserve=6。",
+          "检查 H=16、E=4：H−E=12≥R=6，可行；反例 H=5、E=4 时 H−E=1<R=6，必须拒绝配置。",
+          "写边界：组件 p99 直接相加只是预算启发式；受相关性、流水重叠和未测共同尾事件影响，它可能高估也可能低估。生产优先直接测同一请求边界的 end-to-end p99。",
         ],
         code: String.raw`inference_p99_ms = 190
 network_p99_ms = 55
+end_to_end_p99_ms = 270
 margin_ms = 30
 action_dt_ms = 50
-total_ms = 190 + 55 + 30 = 275
-reserve = ceil(275 / 50) = ceil(5.5) = 6 actions
+component_heuristic = ceil((190 + 55 + 30) / 50) = 6 actions
+measured_reserve = ceil((270 + 30) / 50) = 6 actions
+H = 16; E = 4; R = measured_reserve
+queue_feasible = (H - E >= R) = (12 >= 6) = true
 
-边界：10 samples 只验证计算；不能据此设真实机器人阈值。`,
+边界：10 samples 只验证计算；component sum 既非统计恒等式也不保证保守，不能据此设真实机器人阈值。`,
         expected: [
-          "reserve=6，不是四舍五入为 5。",
+          "component_heuristic=6、measured_reserve=6；数值相同不表示两种 p99 定义等价。",
           "知道最近秩 p99 在该 10 样本 Toy 中等于最大值。",
-          "没有把分组件 p99 之和写成数学上等于端到端 p99。",
+          "H−E≥R 通过，且 H=5/E=4 的反例被拒绝。",
+          "没有把分组件 p99 之和写成端到端 p99，也没有声称它必然保守。",
         ],
-        checkpoint: "给定新 p99 和 action_dt，你能独立算 reserve，并说明何时触发新请求而不是等队列低于阈值。",
+        checkpoint: "给定 end-to-end p99、margin、action_dt、H 与 E，你能独立算 reserve、验证 H−E≥R，并说明何时触发新请求。",
         troubleshooting: [
           "若算出 5，检查最后一步必须向上取整；5 个动作只覆盖 250ms。",
           "若单位混合秒/毫秒，先全部换成同一单位再除。",
@@ -1287,22 +1298,24 @@ reserve = ceil(275 / 50) = ceil(5.5) = 6 actions
         goal: "看到一个合法 chunk 如何跳过过期前缀、限幅，以及后续错误如何被拒绝/停止。",
         actions: [
           "运行 policy_service_fault_injection.py，把输出保存为 baseline-faults.txt。",
-          "先看 ACCEPT:7:skip=2：now=1060、observation=1000、dt=50，所以 index 0 和 1 已过期。",
-          "看 action=(0.05,-0.05)：原 index 2 是 ±0.20，被 max_abs_delta=0.05 截断。",
+          "先看 queue feasibility：H=16、E=4、H−E=12≥reserve=6；脚本还应拒绝 H=5、E=4 的不可行反例。",
+          "再看 ACCEPT:7:skip=2:queued=14：now=1060、action_start=1000、dt=50，所以 index 0 和 1 的调度时刻已过；这与基于 observation_time 的 TTL 是两套时间语义。",
+          "看 EXEC:1100:action=(0.05,-0.05):remaining=13：原 index 2 是 ±0.20，被 max_abs_delta=0.05 截断后才执行。",
           "再按顺序标记 schema REJECT、stale request REJECT、watchdog STOP、TTL STOP。",
-          "将 BOUNDARY 原样概括到 notes，不得删掉“not a certified safety controller”。",
+          "将 BOUNDARY 原样概括到 notes：component p99 addition is a budget heuristic, not an end-to-end p99 identity or safety proof。",
         ],
         code: String.raw`python public/labs/policy_service_fault_injection.py 2>&1 | Tee-Object work/deployment/baseline-faults.txt
 Get-Content work/deployment/baseline-faults.txt`,
         expected: [
-          "首行 inference=190 ms、network=55 ms、reserve=6 actions。",
-          "事件含 ACCEPT:7:skip=2:action=(0.05, -0.05)。",
+          "首行 end_to_end=270 ms、measured_reserve=6，并单独打印 component_heuristic=190+55+30 ms -> 6 actions。",
+          "随后打印 H=16、E=4、H−E=12≥reserve=6。",
+          "事件含 ACCEPT:7:skip=2:queued=14 与 EXEC:1100:action=(0.05, -0.05):remaining=13。",
           "随后出现 schema_version、stale request_id、watchdog timeout、chunk TTL expired。",
           "最后出现 PASS 和明确 BOUNDARY。",
         ],
         checkpoint: "你能逐项解释为何 schema/stale 只是拒绝该包，而 watchdog/TTL 会进入 CONTROLLED_STOP。",
         troubleshooting: [
-          "若 skip 不是 2，检查 ceil((1060-1000)/50)，不能 floor。",
+          "若 skip 不是 2，检查 ceil((now−action_start_time)/action_dt)，不要误用 observation_time，也不能 floor。",
           "若 ±0.20 未截断，检查 max_abs_delta 和执行的是 safe_action 而非 raw_action。",
           "若输出顺序不同，确认基准文件未被编辑；实验一律复制或另建脚本。",
         ],
@@ -1311,19 +1324,21 @@ Get-Content work/deployment/baseline-faults.txt`,
         title: "第 5 步：把日志还原成状态机表",
         goal: "从字符串输出恢复 client 状态、是否执行动作和最近有效消息是否更新。",
         actions: [
-          "新建 event-trace.csv，复制下面五行。",
+          "新建 event-trace.csv，复制下面六行。",
           "逐行查 SafePolicyClient.receive/watchdog 代码，确认 schema/stale 拒绝不会替换 last_valid_message_ms。",
-          "在 executed_action 填唯一被执行的 (0.05,-0.05)，其他行填 NONE。",
+          "把 receive 与 tick 分成两行：合法 receive 只入队，唯一被执行的 (0.05,-0.05) 填在 1100ms 的 tick 行。",
           "给每行写恢复条件；例如 watchdog 后必须收到一条全合法且未过期的新 request，不能仅重放旧包。",
         ],
         code: String.raw`event,now_ms,input,state_after,executed_action,last_valid_updated,recovery
-valid_request_7,1060,valid_v1,ACTIVE,"(0.05,-0.05)",YES,newer valid response
+valid_request_7,1060,valid_v1,ACTIVE,NONE,YES,newer valid response
+tick_action_2,1100,scheduled_action,ACTIVE,"(0.05,-0.05)",NO,continue queue
 schema_v2,1070,bad_schema,ACTIVE,NONE,NO,fix schema and send newer request
 request_6,1080,stale_id,ACTIVE,NONE,NO,send id greater than 7
 watchdog,1181,no_valid_message,CONTROLLED_STOP,NONE,NO,receive fresh fully valid chunk
 request_9,1300,age_300ms,CONTROLLED_STOP,NONE,NO,re-observe and request new chunk`,
         expected: [
-          "只有第一行执行动作并更新 last_valid_message。",
+          "receive 只接纳并排队；只有 tick_action_2 行在绝对调度时刻执行动作。",
+          "仅合法 receive 更新 last_valid_message；tick 与坏包都不更新。",
           "坏包不能充当 heartbeat 延长运行。",
           "TTL 后恢复要求重新观测，而不是重新发送同一 chunk。",
         ],
@@ -1338,8 +1353,8 @@ request_9,1300,age_300ms,CONTROLLED_STOP,NONE,NO,re-observe and request new chun
         goal: "亲手扩展测试，而不是相信清单覆盖了所有故障。",
         actions: [
           "新建 extra_faults.py，复用模块的 SafePolicyClient 和 make_chunk。",
-          "用 dataclasses.replace 一次只改一个字段：frame、actions、observation_time_ms。",
-          "运行并确认三个输入都返回 None，events 顺序与预期一致。",
+          "用 dataclasses.replace 一次只改一个字段：frame、actions、based_on_observation_time_ms。",
+          "运行并确认三个输入都返回 False，events 顺序与预期一致。",
           "解释 future-clock 与 TTL 不同：前者 age<0，说明时钟/协议异常；后者 age 太大。",
         ],
         code: String.raw`# work/deployment/extra_faults.py
@@ -1350,12 +1365,16 @@ from policy_service_fault_injection import SafePolicyClient, make_chunk
 
 client = SafePolicyClient()
 wrong_frame = replace(make_chunk(), frame="camera")
-nan_action = replace(make_chunk(request_id=8), actions=((float("nan"), 0.0),))
-future_clock = replace(make_chunk(request_id=9), observation_time_ms=1200)
+nan_action = replace(
+    make_chunk(request_id=8),
+    actions=((float("nan"), 0.0),),
+    valid=((True, True),),
+)
+future_clock = replace(make_chunk(request_id=9), based_on_observation_time_ms=1200)
 
-assert client.receive(wrong_frame, now_ms=1000) is None
-assert client.receive(nan_action, now_ms=1000) is None
-assert client.receive(future_clock, now_ms=1100) is None
+assert not client.receive(wrong_frame, now_ms=1000)
+assert not client.receive(nan_action, now_ms=1000)
+assert not client.receive(future_clock, now_ms=1100)
 print(*client.events, sep="\n")
 print("EXTRA FAULTS PASS")
 
@@ -1388,7 +1407,7 @@ from policy_service_fault_injection import SafePolicyClient, make_chunk
 
 client = SafePolicyClient(ttl_ms=50)
 result = client.receive(make_chunk(), now_ms=1060)
-assert result is None
+assert not result
 assert client.mode == "CONTROLLED_STOP"
 print(client.events[-1])
 print("TTL COUNTEREXAMPLE PASS")
@@ -1411,7 +1430,7 @@ print("TTL COUNTEREXAMPLE PASS")
         actions: [
           "新建 fault-matrix.csv，至少填写 schema、missing field、NaN、wrong frame/unit、extreme delta、duplicate、reorder、latency、TTL、watchdog、queue underrun、client restart。",
           "每行先写 expected_state 与 executed_action，再安排注入；禁止先运行后为结果改期望。",
-          "新建 log-schema.md，用 request_id 串起 observation metadata、raw response、model/norm revision、skipped prefix、clipped action、actual execution time 与 stop event。",
+          "新建 log-schema.md，用 request_id 串起 observation metadata、based_on_observation_time、clock_id、action_start_time、raw response、model/norm revision、skipped prefix、clipped action、actual execution time 与 stop event。",
           "真实迁移从录制/回放 transport 开始，先用仿真/空载环境；没有独立安全系统时保持 NO-GO。",
         ],
         code: String.raw`fault,inject_at,expected_state,expected_action,recovery,actual,evidence
@@ -1423,8 +1442,9 @@ ttl_expired,freshness,CONTROLLED_STOP,NONE,re-observe and request,,
 watchdog_timeout,liveness,CONTROLLED_STOP,NONE,fresh valid message after reset,,
 queue_underrun,executor,CONTROLLED_STOP,NONE,refill under approved transition,,
 
-日志最小键：request_id, observation_time, receive_time, schema/model/norm/action revisions,
-raw_chunk, skipped_prefix, filtered_chunk, executed_action, execution_time, reject_or_stop_reason。`,
+日志最小键：request_id, based_on_observation_time, clock_id, action_start_time, receive_time,
+schema/model/norm/action revisions, raw_chunk, skipped_prefix, filtered_chunk, executed_action,
+execution_time, reject_or_stop_reason。`,
         expected: [
           "故障矩阵每行都有预期状态、预期动作和恢复条件。",
           "日志同时保留 raw 与 filtered/executed 动作。",
@@ -1443,14 +1463,14 @@ raw_chunk, skipped_prefix, filtered_chunk, executed_action, execution_time, reje
         actions: [
           "新建 frontier-index.csv，依次读取 OFT https://openvla-oft.github.io/、FAST https://www.pi.website/research/fast、RTC https://www.pi.website/research/real_time_chunking 的一手来源。",
           "每项只回答四问：旧系统的受控失败是什么、改了哪一层、证据在哪种任务/样本、引入什么代价。",
-          "动态仓库条目必须固定 revision/date。例如课程索引的 GR00T N1.7 Early Access 快照为 https://github.com/NVIDIA/Isaac-GR00T/tree/b9955401d50c92a29258732e3ad6ccd579f1bdc0，checked 2026-08-08；它不是永久 release 状态声明。",
+          "动态仓库条目必须固定 release/revision/date。例如课程索引使用 GR00T N1.7 GA release：https://github.com/NVIDIA/Isaac-GR00T/releases/tag/n1.7-release，published 2026-04-18、checked 2026-08-10；后续状态变化时新增记录。",
           "在 transfer_to_my_system 一列只写合理推测或待实验，不把官方报告直接写成本项目收益。",
         ],
         code: String.raw`method,official_source,revision_or_date,changed_layer,controlled_problem,evidence_scope,new_cost,transfer_to_my_system,status
 OFT,https://openvla-oft.github.io/,checked-2026-08-08,VERIFY,VERIFY,VERIFY,VERIFY,UNKNOWN,official-report
 FAST,https://www.pi.website/research/fast,checked-2026-08-08,action-tokenization,VERIFY,VERIFY,VERIFY,UNKNOWN,official-report
 RTC,https://www.pi.website/research/real_time_chunking,checked-2026-08-08,runtime-chunk-continuity,VERIFY,VERIFY,VERIFY,UNKNOWN,official-report
-GR00T-N1.7-EA,https://github.com/NVIDIA/Isaac-GR00T/tree/b9955401d50c92a29258732e3ad6ccd579f1bdc0,b995540-checked-2026-08-08,VERIFY,VERIFY,VERIFY,VERIFY,UNKNOWN,dynamic-snapshot`,
+GR00T-N1.7-GA,https://github.com/NVIDIA/Isaac-GR00T/releases/tag/n1.7-release,n1.7-release-published-2026-04-18-checked-2026-08-10,VERIFY,VERIFY,VERIFY,VERIFY,UNKNOWN,official-GA-release`,
         expected: [
           "OFT 不被缩写成“任何连续 head”；FAST 与 RTC 分别落在表示压缩和 runtime 连续性。",
           "每个动态条目有 revision/date。",
@@ -1471,23 +1491,23 @@ GR00T-N1.7-EA,https://github.com/NVIDIA/Isaac-GR00T/tree/b9955401d50c92a29258732
       "可选 frontier-index.csv：OFT/FAST/RTC/动态仓库的来源、日期、层级和未验证迁移。",
     ],
     verifiedBoundary:
-      "policy_service_fault_injection.py 已本地验证 10 样本最近秩 p99 机制、reserve=6、过期前缀 skip=2、±0.05 clip、schema/乱序拒绝、TTL 与 watchdog CONTROLLED_STOP。它是无网络、无机器人、2D 动作的确定性模拟，不检查时钟同步、序列化、动力学、IK、碰撞或任何认证安全功能；真实阈值与前沿方法收益均暂无法验证。",
+      "policy_service_fault_injection.py 已本地验证 10 样本最近秩 p99、end-to-end measured reserve=6、component heuristic=6、H−E≥R、基于 action_start_time 的过期前缀 skip=2、绝对时刻 tick、±0.05 clip、schema/乱序拒绝、TTL 与 watchdog CONTROLLED_STOP。它是无网络、无机器人、2D 动作的确定性模拟，不检查时钟同步、序列化、动力学、IK、碰撞或任何认证安全功能；真实阈值与前沿方法收益均暂无法验证。",
     knowledgeCheck: [
       {
         question: "TTL 与 watchdog 分别处理什么？",
-        answer: "TTL 判断某条 chunk 相对其 observation_time 是否仍新鲜；watchdog 判断系统距离最近一次有效消息是否过久。一个是消息级新鲜度，一个是连接/系统级活性，不能互相替代。",
+        answer: "TTL 根据 based_on_observation_time 判断策略所依据观测是否仍新鲜；action_start_time 只定义动作调度；watchdog 判断系统距离最近一次有效消息是否过久。三者不能互相替代。",
       },
       {
-        question: "为什么 275ms / 50ms 得到 reserve=6？",
-        answer: "5 个动作只覆盖 250ms，小于 275ms；队列动作数必须向上取整到 6 才覆盖这个保守预算。真实系统仍应直接测端到端 p99。",
+        question: "为什么本例 measured reserve=6，并且还要检查 H−E≥R？",
+        answer: "实测 end-to-end p99=270ms，加 30ms margin 后除以 50ms 并向上取整得到 R=6；H−E 表示执行 E 步后剩余的预测覆盖，必须至少为 R 才有机会覆盖新 chunk 到达预算。组件 p99 之和只是可高估或低估的启发式，不能替代端到端测量。",
       },
       {
-        question: "为什么 response 到达时间不能代替 observation_time？",
-        answer: "到达时间只说明网络包何时抵达，不能说明模型依据的感知数据何时采集；延迟大的旧观测可能刚刚到达却已不适合执行。",
+        question: "为什么 response 到达时间不能代替 based_on_observation_time 或 action_start_time？",
+        answer: "到达时间只说明网络包何时抵达；based_on_observation_time 决定观测新鲜度，action_start_time 决定每个动作的绝对调度。三者复用会把新到达的旧观测误判为新鲜，或重放已经错过时刻的动作。",
       },
       {
         question: "本地 fault script PASS 为什么仍不能声称真机安全？",
-        answer: "脚本只验证一个简化 client 控制流，没有真实网络、时钟、动力学、轨迹、碰撞、力限制、硬件急停和认证流程。安全结论需要独立系统与目标设备证据。",
+        answer: "脚本只验证一个简化 client 控制流，没有真实网络、时钟、动力学、轨迹、碰撞、力限制、独立 emergency-stop function 和认证流程。安全结论需要满足目标风险要求的独立系统与目标设备证据。",
       },
       {
         question: "OFT、FAST、RTC 分别主要改哪一层？",
@@ -1503,7 +1523,7 @@ GR00T-N1.7-EA,https://github.com/NVIDIA/Isaac-GR00T/tree/b9955401d50c92a29258732
       "在仓库根目录打开 PowerShell；步骤 1–8 使用现有 Python 标准库脚本即可。",
       "选择一个最小任务。默认示例是“根据语言把红色方块放进左侧托盘”，只含一个机器人、两个相机、一个目标物。",
       "建立两条状态：REHEARSAL（课程 Toy 彩排）和 REAL（真实仿真/机器人）。所有产物必须标明属于哪条，禁止把 REHEARSAL 数值放进真实结果。",
-      "真机路线完全选做；没有独立急停、人工接管、限速/限力、碰撞保护和批准流程时必须停在仿真。",
+      "真机路线完全选做；没有独立且满足目标风险要求的 emergency-stop function、人工接管、限速/限力、碰撞保护和批准流程时必须停在仿真。",
     ],
     steps: [
       {
@@ -1565,7 +1585,7 @@ track: REHEARSAL
 - watchdog: required before any real-device connection
 - collision/force limits: simulator or independent low-level layer
 - operator_takeover: required for REAL
-- hardware_E_stop_tested: NO
+- independent_emergency_stop_function_tested: NO
 - dry_run_passed: NO
 - real_device_decision: NO-GO
 
@@ -1582,7 +1602,7 @@ track: REHEARSAL
         checkpoint: "你能说出让 real_device_decision 从 NO-GO 变化所需的独立证据，而不是模型置信度。",
         troubleshooting: [
           "若项目没有低层安全层，把真机路线删掉/冻结，不让 VLA 直接发硬件命令。",
-          "若团队用 controlled stop 指 E-stop，立即改名并标明两者触发链路。",
+          "若团队用 controlled stop 指 E-stop，立即改名；另行定义并验证满足目标风险要求的独立 emergency-stop function 及其触发链路。",
         ],
       },
       {
@@ -1716,7 +1736,7 @@ result_status: 暂无法验证`,
         goal: "让 ACT、VLA 和 baseline 在相同物理动作接口与安全客户端后比较。",
         actions: [
           "新建 spec/policy-interface.json，复制 Request/Response 示例；模型特有 resize/tokenizer/norm 放 adapter 内，不暴露给 evaluator。",
-          "为 ACT/VLA 都要求相同 images/state/language/request_id/observation_time 输入和 H×7 physical action 输出。",
+          "为 ACT/VLA 都要求相同 images/state/language/request_id/observation_time/clock_id 输入，以及带 based_on_observation_time、action_start_time 和完整物理 action contract 的 H×7 输出。",
           "运行 policy_service_fault_injection.py，把输出保存到 capstone logs。",
           "把 schema、stale、prefix expiry、clip、TTL、watchdog 六项结果填入 reports/deployment-gates.csv。",
           "说明 2D Toy client PASS 只是接口彩排；真实 H×7 client 仍需独立实现和测试。",
@@ -1725,7 +1745,8 @@ result_status: 暂无法验证`,
   "PolicyRequest": {
     "schema_version": "v1",
     "request_id": 101,
-    "observation_time": "monotonic-or-specified-clock",
+    "observation_time_ms": 42000,
+    "clock_id": "robot-monotonic-ms",
     "images": {"front": "tensor-ref", "wrist": "tensor-ref"},
     "state": "float[8]",
     "language": "put the red block in the left tray"
@@ -1733,20 +1754,28 @@ result_status: 暂无法验证`,
   "PolicyResponse": {
     "schema_version": "v1",
     "request_id": 101,
+    "based_on_observation_time_ms": 42000,
+    "clock_id": "robot-monotonic-ms",
+    "action_start_time_ms": 42050,
+    "action_dt_ms": 50,
+    "command_type": "eef_delta_pose_plus_gripper",
+    "frame": "base",
+    "units": ["m","m","m","rad","rad","rad","normalized_0_1"],
+    "rotation_convention": "rotvec_xyz_rad",
     "model_revision": "REQUIRED",
     "normalization_revision": "REQUIRED",
     "action_contract_revision": "REQUIRED",
-    "action_dt_ms": 50,
-    "action_chunk": "float[H,7]"
+    "action_chunk": "float[H,7]",
+    "valid": "bool[H,7]"
   }
 }
 
 # 接着运行：
 python public/labs/policy_service_fault_injection.py 2>&1 | Tee-Object work/capstone/logs/deployment-rehearsal.txt`,
         expected: [
-          "接口中 request_id 与 observation_time 从请求贯穿响应。",
-          "模型/norm/action revision 是必需字段。",
-          "故障彩排输出 reserve=6、skip=2、PASS 与 BOUNDARY。",
+          "接口中 request_id、based_on_observation_time 与 clock_id 从请求贯穿响应；action_start_time 单独定义调度。",
+          "command type/frame/units/rotation/valid 与 model/norm/action revisions 都是必需字段。",
+          "故障彩排输出 end-to-end reserve=6、H−E≥R、ACCEPT queued=14、EXEC remaining=13、PASS 与 BOUNDARY。",
         ],
         checkpoint: "ACT 和 VLA 交换实现后，evaluator/safety client 不应需要改变成功规则或物理动作语义。",
         troubleshooting: [
@@ -1761,7 +1790,8 @@ python public/labs/policy_service_fault_injection.py 2>&1 | Tee-Object work/caps
           "新建 data/worked-rollouts.csv，复制 12 个 0/1 结果；明确它是统计练习，不是真实模型。",
           "新建 summarize_rollouts.py 并运行；核对 7/12=0.583，95% Wilson 区间约 [0.320,0.807]。",
           "把区间很宽的原因写入 reports/evaluation-notes.md：N=12 很小，不应宣称模型稳定胜出。",
-          "真实 eval 时每行还要存 policy/checkpoint、seed、task/scene、paraphrase、latency、filters、termination_reason 与日志路径。",
+          "真实 eval 时每行还要存 policy/checkpoint、seed、task/scene、initial_state_revision、paraphrase、latency、filters、termination_reason 与日志路径。",
+          "若多个策略复用同一 seed/初始状态，这是配对设计：除各自 Wilson 区间外，还要报告逐 pair 成败差、discordant pairs，并使用配对 bootstrap、McNemar exact 等与设计一致的分析；不能把两组当独立样本。",
         ],
         code: String.raw`# work/capstone/data/worked-rollouts.csv
 success
@@ -1792,6 +1822,7 @@ print(f"success={k}/{n}={p:.3f}; Wilson95=[{center-half:.3f},{center+half:.3f}]"
           "输出 success=7/12=0.583; Wilson95=[0.320,0.807]。",
           "worked-rollouts 被标为 REHEARSAL/statistics example。",
           "真实 ledger 的每次失败都保留，不挑最好 seed。",
+          "同 seed 策略比较保留 pairing key，并使用配对分析；单策略 Wilson 区间不冒充策略差异检验。",
         ],
         checkpoint: "你能解释 7/12 与 70/120 即使点估计接近，结论置信程度也不同。",
         troubleshooting: [
@@ -1808,7 +1839,7 @@ print(f"success={k}/{n}={p:.3f}; Wilson95=[{center-half:.3f},{center+half:.3f}]"
           "language 项以 BC Toy 的 permuted MSE 3.24 作为 REHEARSAL 示例；真实 rollout 结果保持 UNKNOWN。",
           "新建 reports/failure-tree.md，从观察到的现象开始：目标识别错、动作方向错、开环对但闭环漂移、执行器错误、evaluator/reset 错。",
           "每个叶节点绑定一个最小实验，例如固定同一观测比 raw/denorm action、用专家动作替换 policy、移除一个 camera。",
-          "规定一次实验只允许一个 changed_variable；若同时改数据和模型，标 INVALID_COMPARISON。",
+          "规定一次实验只允许一个 changed_variable；若同时改数据和模型，标 INVALID_COMPARISON。shared_seeds 表示配对实验，分析时保留每个 seed/initial-state pair 的差值。",
         ],
         code: String.raw`ablation_id,track,base_protocol,changed_variable,control,treatment,shared_seeds,expected_question,result,status
 lang_perm,REHEARSAL,bc-toy-v1,language pairing,correct,permuted,same,"policy uses language?",MSE 0 vs 3.24,TOY_VERIFIED
@@ -1896,7 +1927,7 @@ REAL_ROBOT_DECISION: NO-GO until independent safety review + dry-run evidence ex
       },
       {
         question: "什么时候允许从仿真进入真机灰度？",
-        answer: "只有独立急停/接管、低层限速限力/工作空间/碰撞门禁、frame/unit/标定、TTL/watchdog、空载 dry-run 和批准的风险流程都有实际证据时；模型置信度、仿真成功或精选视频都不能替代这些门禁。",
+        answer: "只有满足目标风险要求的独立 emergency-stop function/接管、低层限速限力/工作空间/碰撞门禁、frame/unit/标定、TTL/watchdog、空载 dry-run 和批准的风险流程都有实际证据时；模型置信度、仿真成功或精选视频都不能替代这些门禁。",
       },
     ],
   },

@@ -4,34 +4,36 @@ const commonMathTrouble = ["先核对 shape、单位、log 的底数和 mean/sum
 
 export const supplementalWalkthroughs = {
   "math-foundations": {
-    intro: "本章按一条固定样本贯穿四组公式。先在纸上写 shape，再运行标准库脚本；每次等价都必须说出前提。",
+    intro: "本章用同一组数值串起五类常用公式。先在纸上写 shape，再运行标准库脚本；每次等价都要写清适用前提。",
     beforeYouStart: ["准备纸笔或电子表格。", "确认 python --version 为 3.10+。", "不要先看脚本末尾断言。"],
     steps: [
       { title: "建立唯一符号表", goal: "避免同一个 A 同时代表 action chunk 和 advantage。", actions: ["写 x=(images,state,language)，action_chunk∈R[B,H,dₐ]。", "另写 reward、return、value、advantage，不复用变量名。", "为每项写 shape 和 unit。"], expected: ["你会得到至少 B、K、H、dₐ 四个轴。", "动作与 advantage 使用不同代码变量名。"], checkpoint: "任取后续一条公式都能标出每个符号的 shape。", troubleshooting: commonMathTrouble },
       { title: "手推高斯 NLL", goal: "看见 MSE 背后的分布和尺度假设。", actions: ["令 target=1.0、mean=0.6、σ=0.5。", "计算平方误差、除以 2σ²，再加 log 常数。", "保持 σ 固定，说明最小化 NLL 与平方误差为何同方向。"], expected: ["平方误差为 0.16。", "你能指出 σ 改变会改变维度权重。"], checkpoint: "能口述固定方差条件。", troubleshooting: commonMathTrouble },
       { title: "手算一维高斯 KL", goal: "为 ACT/CVAE 的 KL 项建立可核查数值。", actions: ["取 μ=0.5、σ=0.8、先验 N(0,1)。", "代入 0.5(μ²+σ²−1−logσ²)。", "检查结果非负。"], expected: ["KL 约为 0.1681。", "若 μ=0 且 σ=1，KL 为 0。"], checkpoint: "两个边界值都正确。", troubleshooting: commonMathTrouble },
-      { title: "从后向前算 return", goal: "区分即时 reward 和未来累计回报。", actions: ["写 rewards=[0,0,1]、γ=0.9。", "从末尾开始递推 Gₜ=rₜ+γGₜ₊₁。", "再取 values=[0.6,0.8,0.9] 算 advantages。"], expected: ["returns=[0.81,0.9,1.0]。", "advantages=[0.21,0.1,0.1]。"], checkpoint: "可以解释为什么第一步 reward=0 但 return>0。", troubleshooting: commonMathTrouble },
-      { title: "运行完整数值脚本", goal: "用独立断言检查前四步。", actions: ["从项目根目录运行命令。", "逐段对照纸面结果，不只看 PASS。"], code: "python public/labs/vla_math_foundations.py", expected: ["输出 NLL、KL、returns/advantages 和 flow endpoint。", "末行 MATH CHECKS PASS。"], checkpoint: "每段输出都能解释。", troubleshooting: ["若找不到文件，确认当前目录含 package.json。", ...commonMathTrouble] },
+      { title: "从后向前算 advantage estimator", goal: "区分即时 reward、真实 advantage 定义与单轨迹估计。", actions: ["先写正式定义 A^π(s,a)=Q^π(s,a)−V^π(s)。", "取 rewards=[0,0,1]、γ=0.9，从末尾递推 Monte Carlo return Ĝₜ=rₜ+γĜₜ₊₁。", "再取 value estimates=[0.6,0.8,0.9]，计算 Âₜ=Ĝₜ−V̂(sₜ)。"], expected: ["return estimates=[0.81,0.9,1.0]。", "advantage estimates=[0.21,0.1,0.1]。", "不会把一条轨迹的 Ĝ−V̂ 当成 A^π 的定义。"], checkpoint: "可以解释为什么第一步 reward=0 但 return>0，以及 Q−V 与 Ĝ−V̂ 的区别。", troubleshooting: commonMathTrouble },
+      { title: "手算 PPO clipping", goal: "看懂概率比值何时被截断，以及截断保护的到底是什么。", actions: ["取旧策略概率 0.25、新策略概率 0.30，算 ρ=0.30/0.25=1.20。", "令 ε=0.10、Â=0.50，算 unclipped=ρÂ=0.60。", "把 ρ 截到 [0.90,1.10]，得到 clipped=1.10×0.50=0.55，再取两者较小值。"], expected: ["该样本的 clipped surrogate 为 0.55。", "PPO clipping 限制单次策略更新幅度，不是机器人动作限幅、碰撞检查或急停。"], checkpoint: "能解释正 advantage 时为什么取 0.55，而不是 0.60。", troubleshooting: ["先确认分母是旧策略概率。", "advantage 为负时，min 的结果需要重新逐项比较。", ...commonMathTrouble] },
+      { title: "运行完整数值脚本", goal: "用独立断言检查前五步。", actions: ["从项目根目录运行命令。", "逐段对照纸面结果；脚本标签 advantages 指本例的 Â=Ĝ−V̂，不是真实 A^π 定义。"], code: "python public/labs/vla_math_foundations.py", expected: ["输出 NLL、KL、return/advantage estimates、PPO clipping 和 flow endpoint。", "末行 MATH CHECKS PASS。"], checkpoint: "每段输出都能解释。", troubleshooting: ["若找不到文件，确认当前目录含 package.json。", ...commonMathTrouble] },
       { title: "用数值差分查梯度", goal: "学会在复杂模型前检查局部解析梯度。", actions: ["找到脚本中的 quadratic loss。", "比较解析梯度与 ±h 中心差分。", "把 h 改成 1e-2、1e-4、1e-8 观察误差。"], expected: ["中等 h 时两者接近。", "过小 h 可能受浮点消减影响。"], checkpoint: "能解释数值差分不是训练算法。", troubleshooting: commonMathTrouble },
       { title: "故意反转 flow 时间", goal: "把符号错误变成可见失败。", actions: ["复制脚本到临时位置。", "仅把 Euler dt 的符号反转。", "运行并比较 endpoint。"], expected: ["endpoint 远离目标。", "其他 NLL/KL 检查仍通过。"], checkpoint: "失败只由一个变量引起并已记录。", troubleshooting: commonMathTrouble },
       { title: "迁移到一条真实 VLA batch", goal: "让符号表成为工程检查器。", actions: ["从现有数据 loader 打印 images/state/actions/mask shape。", "为 action 每个 slice 写 unit。", "列出 loss 在哪些轴做 mean/sum。"], expected: ["得到真实 batch 的带单位 shape 表。", "未知字段被明确标记，而非猜测。"], checkpoint: "另一人能按表读懂你的 loss。", troubleshooting: ["若 loader 尚未建立，先使用 data-and-adaptation 章 demo。", ...commonMathTrouble] },
     ],
-    finalArtifact: ["一页不重名的 VLA 符号表。", "四段手算和脚本完整输出。", "一次错误时间方向的失败记录。", "真实 batch 的 shape/unit/reduction 表。"],
+    finalArtifact: ["一页不重名的 VLA 符号表。", "五段手算和脚本完整输出。", "一次错误时间方向的失败记录。", "真实 batch 的 shape/unit/reduction 表。"],
     verifiedBoundary: "脚本验证确定性算术与断言，不验证任何真实模型收敛、策略提升或安全性。",
     knowledgeCheck: [
       { question: "MSE 何时与高斯 NLL 等价？", answer: "当模型均值是待优化量、方差固定且忽略与均值无关的常数时；不同维方差还会引入权重。" },
       { question: "为什么 action_chunk 和 advantage 不应都叫 A？", answer: "论文可由上下文区分，代码中却容易广播或记录错对象；用 action_chunk 与 advantage 明确区分。" },
       { question: "全失败 group 的相对 advantage 怎样？", answer: "奖励方差为零，稳定化后优势接近零，通常没有方向性学习信号。" },
+      { question: "PPO clipping 能代替动作限幅或碰撞检查吗？", answer: "不能。它约束训练时的新旧策略概率比，机器人安全仍由独立的动作合同、限幅、碰撞检查、TTL 和急停功能处理。" },
       { question: "Euler 的负号为什么危险？", answer: "它改变积分方向，可能把噪声推离数据或把动作逆向生成；必须与训练的时间约定一致。" },
     ],
   },
 
   "act-cvae": {
-    intro: "直接复用 BC 章冻结的数据切分与 H=16、dₐ=7 动作合同：先画训练/推理两条信息流，再把本章三段推导逐一映射到 KL、masked chunk loss 和重叠动作融合；最后让 ACT 与后续 VLA 共用接口。",
+    intro: "这里实现的是 language-conditioned ACT-style 课程变体：复用 BC 章冻结的数据切分与 K=2、H=16、dₐ=7 动作合同，再把三段推导映射到 KL、masked chunk loss 和重叠动作融合。原始 ACT 不输入语言；本章的 K/H/7D 也不是原论文默认配置。",
     beforeYouStart: ["已完成数学地基与 Behavior Cloning，并保留 BC 的 dataset/checkpoint/rollout 产物。", "能读取 H×dₐ 张量；动作单位、frame、dt 和训练集统计沿用 BC 章，不在本章重新拟合。", "安装只需 Python 3.10+；action-chunking 的 TTL 与异步执行将在下一章继续完成。"],
     steps: [
-      { title: "画训练信息流", goal: "标出未来动作只在训练期可见。", actions: ["画 image/q/action_chunk 三个输入。", "action_chunk+q 进入 style encoder。", "采样 z 后 image/q/z 进入 decoder。"], expected: ["真实未来动作不直接进入 decoder 输出端。", "q 同时可用于 encoder 与 decoder。"], checkpoint: "能指出 posterior 的条件。", troubleshooting: ["不要把未来 action 当普通传感器。"] },
-      { title: "画推理信息流", goal: "消除训练期未来信息泄漏。", actions: ["删掉 action_chunk 和 style encoder。", "按 checkpoint 约定将 z=0 或从先验采样。", "保留 image/q→decoder。"], expected: ["推理图没有 ground-truth future action。"], checkpoint: "训练与推理差异已用颜色标出。", troubleshooting: ["若实现推理仍调用 encoder，检查官方 checkpoint 代码路径。"] },
+      { title: "画训练信息流", goal: "标出未来动作只在训练期可见，并区分原始 ACT 与课程变体。", actions: ["画 image/q/language/action_chunk 四项；把 language 标为课程新增条件。", "action_chunk+q 进入 style encoder。", "采样 z 后 image/q/language/z 进入课程 decoder；另注原始 ACT 路径不含 language。"], expected: ["真实未来动作不直接进入 decoder 输出端。", "能指出 K=2、H=16、dₐ=7 与 language 都属于课程配置。"], checkpoint: "能指出 posterior 的条件，并说明哪条边不是原始 ACT。", troubleshooting: ["不要把未来 action 当普通传感器。", "不要用 ACT 名称掩盖课程新增的语言条件。"] },
+      { title: "画推理信息流", goal: "消除训练期未来信息泄漏。", actions: ["删掉 action_chunk 和 style encoder。", "按 checkpoint 约定将 z=0 或从先验采样。", "课程变体保留 image/q/language→decoder；原始 ACT 只保留 image/q。"], expected: ["推理图没有 ground-truth future action。", "原始路径和课程 language-conditioned 路径没有混写。"], checkpoint: "训练与推理差异已用颜色标出。", troubleshooting: ["若实现推理仍调用 encoder，检查官方 checkpoint 代码路径。"] },
       { title: "手算重参数化与 KL", goal: "看懂 CVAE 的两项损失。", actions: ["用数学地基章 μ、σ 复算 KL。", "固定 ε=0.25 算 z=μ+σε。", "说明固定 ε 只用于可复现教学。"], expected: ["z 可被确定性复算。", "KL 非负。"], checkpoint: "可以解释为什么需要重参数化。", troubleshooting: commonMathTrouble },
       { title: "构造三个重叠 chunk", goal: "按真实执行时刻对齐，并把候选顺序与权重方向分开检查。", actions: ["写 query 0 预测时刻0,1,2。", "query 1 预测时刻1,2,3。", "query 2 预测时刻2,3,4。", "对执行时刻 2 按旧→新排列三个候选；分别计算官方代码的 exp(−k·index) 与年龄衰减 exp(−k·age)。"], expected: ["执行时刻 2 有三个候选。", "官方固定实现给旧候选更高权重；年龄衰减对照给新候选更高权重，两者结果不同。"], checkpoint: "每个候选能追溯 query_time 和 offset，并能说明权重到底作用于数组 index 还是物理 age。", troubleshooting: ["用 execute_time=query_time+offset，不要凭数组位置。", "只看到 exp(−ki) 不能判断偏好新旧，必须先写候选排列顺序。"] },
       { title: "运行 ACT 机制脚本", goal: "核对 KL 与融合算术。", actions: ["运行命令。", "将输出抄入你的重叠表。"], code: "python public/labs/act_cvae_mechanics.py", expected: ["打印 KL、候选和加权结果。", "末行 ACT MECHANICS PASS。"], checkpoint: "脚本与手算一致。", troubleshooting: commonMathTrouble },
@@ -40,12 +42,13 @@ export const supplementalWalkthroughs = {
       { title: "让 ACT 与 π₀.₅ 共用接口", goal: "用窄基线定位模型与系统问题。", actions: ["定义统一 PolicyRequest。", "把 ACT 输出反归一化为与 π₀.₅ 相同的物理 slice。", "让两者通过同一 TTL/限幅/日志。"], expected: ["评测器不需要知道后端是 ACT 还是 VLA。"], checkpoint: "同一固定输入可切换 policy revision。", troubleshooting: ["若结果尺度不同，先比 raw/norm/denorm 三层。"] },
     ],
     finalArtifact: ["训练/推理双色图。", "KL 与 z 手算。", "重叠 chunk/时间错位表。", "统一 PolicyRequest/Response。"],
-    verifiedBoundary: "Toy 只验证 CVAE 与 temporal ensemble 的算术；没有训练视觉 Transformer，也没有复现 ACT 真实任务成功率。",
+    verifiedBoundary: "Toy 只验证 CVAE 与 temporal ensemble 的算术；没有训练视觉 Transformer，也没有复现 ACT 真实任务成功率。K=2、H=16、dₐ=7 和语言条件属于课程 ACT-style 变体，不能标成原始 ACT 配置。",
     knowledgeCheck: [
       { question: "训练期 style encoder 看什么？", answer: "当前关节/状态与真实未来动作块，用于近似后验 q(z|q,A)。" },
       { question: "推理为何不能继续用该 encoder？", answer: "未来真实动作不可用；推理必须按实现从先验/固定 z 生成。" },
       { question: "temporal ensemble 与 receding horizon 的区别？", answer: "前者融合多个 query 对同一执行时刻的预测，后者决定动作块只执行多少步后重规划。" },
       { question: "ACT 成功能证明 VLA 一定可学吗？", answer: "不能；它只为特定数据、配置和接口建立窄策略正证据。" },
+      { question: "本章为什么不是原始 ACT 复现？", answer: "原始 ACT 不使用语言输入；本章为贯穿案例新增语言条件，并采用课程自己的 K=2、H=16、dₐ=7 数据合同。" },
     ],
   },
 
@@ -129,8 +132,8 @@ export const supplementalWalkthroughs = {
         goal: "把物理动作语义与模型固定维度解耦，加入腰部而不破坏其他本体。",
         actions: ["按 left_arm/left_gripper/right_arm/right_gripper/waist/base 命名 slice。", "为每个 slice 写 command_type、frame、unit、dt、limits、normalizer 和 valid mask。", "先定义 mode-gated 动作：navigate/stabilize/manipulate/recover；无效 slice 必须 mask。", "运行契约脚本，修改示例 DOF 以匹配 robot_io.csv。"],
         code: "python public/labs/whole_body_action_contract.py",
-        expected: ["脚本打印 active_dim、pad_dim=32、slice 表和 round-trip error。", "NaN、超范围或 mask 错误被故障注入捕获。", "默认数字只是示例，必须改成你的实机定义。"],
-        checkpoint: "active→normalize→pad→denormalize→slice 的有效维误差通过断言，padding 永不执行。",
+        expected: ["脚本打印 active_dim=20、pad_dim=32、六个 slice、q01/q99 教学 norm revision、round-trip error 与 valid/mode mask。", "non-finite 与 limit 两类故障被捕获；脚本没有单独注入 mask corruption。", "默认统计来自示例 limits，不是真实 train split，必须替换为目标机器定义。"],
+        checkpoint: "physical→quantile normalize→pad→quantile denormalize→mode slice 的有效维误差通过断言，base 在 manipulate mode 被 mask，padding 不进入反归一化或执行。",
         troubleshooting: ["active_dim>32 时不能只截断；修改模型/adapter 设计并重新评估。", "差速底盘通常 [vₓ,ωz]，全向可能 [vₓ,vᵧ,ωz]；必须按实机确认。", "常量维 norm 除零时用 fixed/mask 处理。"],
       },
       {
@@ -184,17 +187,17 @@ export const supplementalWalkthroughs = {
       {
         title: "实现自定义 Inputs/Outputs 与 DataConfig",
         goal: "把你的相机、state、语言和 action contract 接入 π₀.₅，而不是改机器人去假装 ALOHA。",
-        actions: ["Inputs：按 checkpoint 要求 resize/crop/normalize images，按名字拼 state，传 prompt。", "Outputs：反归一化、按 mode/mask slice、转换 frame/unit，再交 safety。", "DataConfig：字段映射、delta timestamps、action horizon 和 transforms 全部版本化。", "用一条样本逐层保存 raw→model→physical 中间值。"],
+        actions: ["Inputs：按 checkpoint 要求 resize/crop/normalize images，按名字拼 state，传 prompt。", "Outputs：调用 normalization_revision 对应的 Norm⁻¹，再按 mode/mask slice、转换 frame/unit，最后交 safety；不要把 z-score 写死为通用反归一化。", "DataConfig：字段映射、delta timestamps、action horizon 和 transforms 全部版本化。", "用一条样本逐层保存 raw→model→physical 中间值。"],
         expected: ["adapter_trace.json 可看到每层 shape/range/revision。", "模型 padded 维不直接流入执行器。"],
-        checkpoint: "手工样本 round-trip 与 whole_body_contract.py 一致。",
+        checkpoint: "手工样本 round-trip 与 whole_body_action_contract.py 一致。",
         troubleshooting: ["先比较一条样本，不在训练 loss 中猜 adapter 错误。", "crop 改变相机几何时记录配置。"],
       },
       {
         title: "计算兼容的 norm stats",
         goal: "避免把其他本体统计套到新增腰部和未知底盘上。",
-        actions: ["逐 slice 检查物理定义是否与公开 stats 完全一致。", "不一致维从本机 train split 计算 q01/q99 或配置要求的统计。", "保留 clip count、常量维、NaN/Inf 和单位检查。", "stats 与 dataset/action contract revision 绑定。"],
+        actions: ["逐 slice 检查物理定义是否与公开 stats 完全一致。", "固定 openpi 15a9616 的 π₀.₅ 默认使用 q01/q99 quantile；从本机 train split 计算匹配统计，并记录 Norm/Norm⁻¹。", "只有显式选择 z-score 分支时才改用 mean/std；不要混用两套正逆变换。", "保留 clip count、常量维、NaN/Inf 和单位检查；stats 与 dataset/action contract revision 绑定。"],
         expected: ["每个 active dimension 有来源。", "腰部/底盘不会借用不相容本体统计。"],
-        checkpoint: "normalize/denormalize 有效维 round-trip 通过，val/test 不参与统计。",
+        checkpoint: "同一 normalization revision 的 Norm/Norm⁻¹ 有效维 round-trip 通过，π₀.₅ 默认报告 q01/q99，val/test 不参与统计。",
         troubleshooting: ["统计极端先查单位与 outlier，不直接扩大范围。", "公开 Mobile ALOHA stats 只有契约完全相同才可尝试。"],
       },
       {

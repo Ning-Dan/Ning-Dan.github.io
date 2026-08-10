@@ -2,7 +2,7 @@ import type { LessonDetail } from "@/lib/lessonContent";
 
 export const supplementalLessonContent = {
   "math-foundations": {
-    lead: "这不是一章额外的高等数学，而是一张贯穿 BC、CVAE、diffusion、flow 与 RL 后训练的符号地图。目标是让后面的公式可以逐项检查，而不是靠记忆形状。",
+    lead: "本章整理一张贯穿 BC、CVAE、diffusion、flow 与 RL 后训练的符号地图。后续公式都应能逐项核对，不必靠记忆猜 shape。",
     objectives: [
       "统一随机变量、张量 shape、条件概率与时间下标的写法。",
       "从最大似然推到 NLL、MSE 和交叉熵，并说清各自隐含的分布假设。",
@@ -18,30 +18,30 @@ export const supplementalLessonContent = {
       { duration: "4:00–5:00", title: "Diffusion、flow 与数值检查", activity: "比较离散更新与 ODE；运行脚本并故意改错时间方向。", deliverable: "PASS 输出与一条失败解释。" },
     ],
     theory: [
-      "VLA 的最小样本可写为 x=(I₁:K,q,ℓ,A)，其中 I 是多相机或历史图像，q 是本体状态，ℓ 是语言，A∈R^{H×dₐ} 是动作块。公式里不写 shape 会掩盖最常见的错误：把 batch 和 time 做错 reduction、把 H×dₐ 展平后失去 mask、或把不同单位的动作维度同权相加。",
+      "VLA 的条件输入可写为 x=(I₁:K,q,ℓ)，监督样本写成 (x,A)：I 是多相机或历史图像，q 是本体状态，ℓ 是语言，A∈R^{H×dₐ} 是动作块。A 是要建模的目标，不属于条件 x。公式里不写 shape 会掩盖最常见的错误：把 batch 和 time 做错 reduction、把 H×dₐ 展平后失去 mask、或把不同单位的动作维度同权相加。",
       "行为克隆的统一起点是最大化专家动作的条件似然。连续动作若假设各维同方差独立高斯，负对数似然在忽略常数后变成 MSE；离散 token 用 categorical likelihood 得到交叉熵。MSE 不是自然定律，它继承了单峰、尺度和条件独立等建模选择。",
-      "CVAE 引入 z 表示同一观测下的多种合理动作，训练时用近似后验 qφ(z|x,A)，推理时从先验 p(z|x) 采样或取约定值。ELBO 由重建项和 KL 正则组成；KL 权重过大可能让 decoder 忽略 z，过小则训练后验与推理先验不匹配。",
+      "CVAE 引入 z 表示同一观测下的多种合理动作，训练时用近似后验 qφ(z|x,A)，推理时从先验 p(z|x) 采样或取约定值。重建项加一次 KL（β=1）对应标准负 ELBO；把 KL 改为任意权重 β 后，应称 β-CVAE/β-VAE 目标，而不能无条件继续叫 ELBO。β 过大可能让 decoder 忽略 z，过小则训练后验与推理先验不匹配。",
       "RL 后训练需要区分 reward rₜ、return Gₜ、value V(sₜ)、action value Q(sₜ,aₜ) 与 advantage Aₜ。advantage 不是成功率本身，而是某动作相对基线的超额表现估计。策略比率和裁剪用于限制更新幅度，但不自动带来机器人安全。",
       "Diffusion 在离散噪声步上学习去噪/score 类目标；flow matching 学连续时间速度场 vθ(x,t,c)，推理通过 ODE 积分把噪声送到数据。两者都必须先约定时间方向、参数化目标与 solver；同一个负号错误会把样本推离目标。",
     ],
     deepDive: [
       { title: "1. 已确认的等价与没有被证明的外推", paragraphs: ["【已确认】固定方差高斯 NLL 与加权 MSE 只差常数；categorical NLL 就是交叉熵；一维标准高斯 KL 有闭式解。", "【合理推测】统一符号和 shape 检查能减少工程错误，但本站 Toy 没有统计证明它能提高真实机器人成功率。", "【个人观点】先学最小可计算数学、需要时再补严密测度论，比先背完整概率论更适合这条工程课程。", "【暂无法验证】用户真实数据的噪声分布、多峰程度与最优 loss 权重，必须靠数据诊断和 rollout 验证。"], takeaways: ["等价关系都有前提。", "shape、unit、mask 与概率假设同等重要。"] },
       { title: "2. 从 NLL 到 MSE：常数被删掉了，假设没有", paragraphs: ["若 a|x∼N(μθ(x),σ²I)，则 −log p(a|x)=||a−μ||²/(2σ²)+(d/2)log(2πσ²)。固定 σ 时优化 μ 等价于最小化 MSE；若不同动作维量纲和噪声不同，应归一化或显式使用每维 σ。", "对多峰目标，单高斯均值可能落在两个可行模式之间。改为 mixture、离散 token、CVAE、diffusion 或 flow 是建模分布的变化，不只是换 loss 名字。"], takeaways: ["MSE 隐含单高斯中心。", "归一化决定各维 loss 权重。"] },
-      { title: "3. Advantage 的手算顺序", paragraphs: ["先写轨迹的 r₀:T，再选 γ，从后向前算 Gₜ=rₜ+γGₜ₊₁；然后用 V(sₜ) 得 Aₜ=Gₜ−V(sₜ)。若做 group-relative 方法，基线可来自同任务的一组 rollout，但组内奖励全相同会导致优势接近零。", "策略比率 ρ=πθ(a|s)/πold(a|s) 要求能计算动作的 log probability。连续 flow/diffusion policy 若没有可用似然或训练目标对应的 surrogate，就不能直接把语言模型 PPO 公式原样套上。"], takeaways: ["reward、return、value、advantage 不是同一个量。", "能采样不等于能计算 log probability。"] },
+      { title: "3. Advantage 的定义与手算估计", paragraphs: ["正式定义是 A^π(s,a)=Q^π(s,a)−V^π(s)。在一条采样轨迹上，先写 r₀:T、选 γ，再从后向前算 Monte Carlo return Ĝₜ；用估计的 V̂(sₜ) 得到优势估计 Âₜ=Ĝₜ−V̂(sₜ)，不能把单条样本的 G−V 写成真实 A^π 的定义。若做 group-relative 方法，基线可来自同任务的一组 rollout，但组内奖励全相同会导致优势估计接近零。", "策略比率 ρ=πθ(a|s)/πold(a|s) 要求能计算动作的 log probability。连续 flow/diffusion policy 若没有可用似然或训练目标对应的 surrogate，就不能直接把语言模型 PPO 公式原样套上。"], takeaways: ["A^π=Q^π−V^π 是定义，Ĝ−V̂ 是估计。", "能采样不等于能计算 log probability。"] },
     ],
-    formula: { latex: String.raw`\mathcal L_{\mathrm{ELBO}}=\mathbb E_{q_\phi(z\mid x,A)}[-\log p_\theta(A\mid x,z)]+\beta D_{\mathrm{KL}}(q_\phi\|p),\quad A_t=G_t-V(s_t)`, symbols: [
-      { symbol: "x", meaning: "图像、语言和本体状态条件。" }, { symbol: "A", meaning: "H×dₐ 动作块。" }, { symbol: "z", meaning: "动作模式的潜变量。" }, { symbol: "β", meaning: "重建与先验匹配的权衡。" }, { symbol: "Gₜ", meaning: "从 t 开始的折扣回报。" }, { symbol: "Aₜ", meaning: "相对 value 基线的 advantage。" },
-    ], note: "同一个字母 A 在不同文献中可能表示动作块或 advantage；本教程用粗体/上下文区分，写代码时必须使用 action_chunk 与 advantage 两个不同变量名。" },
-    practice: { title: "四段数学最小实验", summary: "运行标准库脚本核对 NLL、KL、advantage 与 Euler 方向。", steps: ["运行 python public/labs/vla_math_foundations.py。", "逐行复算输出。", "把 flow 的 dt 改成负号，观察终点离开目标。"], acceptance: ["所有手算与脚本一致。", "能说明每个等价的前提。", "能解释错误时间方向。"], status: "已验证", code: "python public/labs/vla_math_foundations.py", expected: ["打印 NLL/MSE 等价、KL、returns/advantages 与 Euler endpoint，最后 MATH CHECKS PASS。"], debugging: ["数值不一致先检查 log 的底和 mean/sum reduction。", "advantage 不一致先检查 γ 和终止位置。"] },
+    formula: { latex: String.raw`\mathcal L_{\beta\text{-CVAE}}=\mathbb E_{q_\phi(z\mid x,\mathbf A)}[-\log p_\theta(\mathbf A\mid x,z)]+\beta D_{\mathrm{KL}}(q_\phi\|p),\quad A^\pi(s,a)=Q^\pi(s,a)-V^\pi(s),\quad \hat A_t=\hat G_t-\hat V(s_t)`, symbols: [
+      { symbol: "x", meaning: "图像、语言和本体状态条件；不含动作目标。" }, { symbol: "A", meaning: "H×dₐ 动作块监督目标。" }, { symbol: "z", meaning: "动作模式的潜变量。" }, { symbol: "β", meaning: "重建与先验匹配的权衡；仅 β=1 对应标准负 ELBO。" }, { symbol: "A^π", meaning: "策略 π 下的真实 advantage，定义为 Q^π−V^π。" }, { symbol: "Âₜ", meaning: "由采样 return 与 value 估计得到的 advantage estimator。" },
+    ], note: "β=1 时前两项是标准负 ELBO；β≠1 时这里只称 β-CVAE 训练目标。同一个字母 A 在不同文献中可能表示动作块或 advantage；本教程用粗体/上下文区分，写代码时必须使用 action_chunk 与 advantage 两个不同变量名。" },
+    practice: { title: "五段数学最小实验", summary: "运行标准库脚本核对 NLL、KL、advantage estimate、PPO ratio/clip 与 Euler 方向。", steps: ["运行 python public/labs/vla_math_foundations.py。", "逐行复算输出，并把脚本中的 advantages 解释为单轨迹估计 Â。", "手算 0.30/0.25=1.2，经 ε=0.1 裁到 1.1；正优势 0.5 的 clipped surrogate 为 0.55。", "把 flow 的 dt 改成负号，观察终点离开目标。"], acceptance: ["所有手算与脚本一致。", "能说明 A^π=Q^π−V^π 与 Â=Ĝ−V̂ 的区别。", "能解释 PPO clip 限制 surrogate 更新但不构成机器人安全约束。", "能解释错误时间方向。"], status: "已验证", code: "python public/labs/vla_math_foundations.py", expected: ["打印 NLL/MSE、KL、return/advantage estimates、PPO ratio=1.20→1.10、surrogate=0.55 与 Euler endpoint，最后 MATH CHECKS PASS。"], debugging: ["数值不一致先检查 log 的底和 mean/sum reduction。", "advantage estimate 不一致先检查 γ 和终止位置。", "PPO 数值不一致先分清概率比率、clip 区间与 maximize surrogate 的 min。"] },
     pitfalls: ["把 MSE 当成无假设的真理", "混淆动作 A 与 advantage Aₜ", "忽略 batch/time/action reduction", "把训练时间与采样时间方向混用", "认为 PPO clip 等于安全约束"],
     review: ["MSE 与高斯 NLL 在什么条件下等价？", "为什么全相同 reward 的组可能没有学习信号？", "CVAE 训练与推理时 encoder 有什么差别？"],
     completion: "不看答案完成一页符号表、四个数值例，并能在后续章节公式里标出每个张量的 shape、unit 与概率假设。",
-    sources: [{ title: "ACT", url: "https://arxiv.org/abs/2304.13705", role: "CVAE/ELBO 应用" }, { title: "Diffusion Policy", url: "https://diffusion-policy.cs.columbia.edu/", role: "动作 diffusion" }, { title: "Flow Matching", url: "https://arxiv.org/abs/2210.02747", role: "连续流目标" }, { title: "PPO", url: "https://arxiv.org/abs/1707.06347", role: "策略更新" }],
+    sources: [{ title: "Auto-Encoding Variational Bayes", url: "https://arxiv.org/abs/1312.6114", role: "ELBO 与重参数化" }, { title: "Deep Conditional Generative Models", url: "https://proceedings.neurips.cc/paper/2015/hash/8d55a249e6baa5c06772297520da2051-Abstract.html", role: "CVAE" }, { title: "ACT", url: "https://arxiv.org/abs/2304.13705", role: "CVAE 动作块应用" }, { title: "Diffusion Policy", url: "https://diffusion-policy.cs.columbia.edu/", role: "动作 diffusion" }, { title: "Flow Matching", url: "https://arxiv.org/abs/2210.02747", role: "连续流目标" }, { title: "PPO", url: "https://arxiv.org/abs/1707.06347", role: "策略更新" }],
     visual: "math",
   },
 
   "act-cvae": {
-    lead: "本章直接接收上一章的 BC 数据、冻结切分和 H=16、dₐ=7 动作合同：先把单步回归升级为带潜变量的动作块，再把同一物理执行时刻的重叠预测融合。ACT 因而不是孤立的 baseline 名称，而是从 BC 走向连续动作 VLA 的可运行桥梁。",
+    lead: "本章构造的是 language-conditioned ACT-style 课程变体：直接接收上一章的 BC 数据、冻结切分和 K=2、H=16、dₐ=7 动作合同，再把单步回归升级为带潜变量的动作块并融合重叠预测。原始 ACT 不接收语言；这里的 K、H 和 7D 接口也都是贯穿案例的选择，不是原论文默认配置。",
     objectives: ["在贯穿案例上画出 ACT 训练与推理的两条数据流。", "从条件似然逐步推出 ELBO，并手算 diagonal Gaussian KL。", "写出带 time/action mask 的 H×dₐ reconstruction loss。", "区分 chunk horizon、execution horizon 与 temporal ensemble。", "让 ACT 与后续 VLA 复用同一 action contract、评测器和安全层。"],
     timePlan: [
       { duration: "0:00–0:50", title: "拆训练/推理图", activity: "标出 style encoder 只在训练看到 action。", deliverable: "双色信息流图。" },
@@ -51,8 +51,8 @@ export const supplementalLessonContent = {
       { duration: "3:40–5:00", title: "迁移到统一接口", activity: "让 ACT 与 π₀.₅ 输出同一物理 action contract。", deliverable: "可交换的 PolicyResponse 示例。" },
     ],
     theory: [
-      "沿用全课程案例，一条训练样本包含最近 K=2 帧双相机图像、当前机器人状态 qₜ、语言指令 ℓ，以及未来动作块 Aₜ∈R^{16×7}。BC 章的 episode split、动作单位、tool frame 和训练集统计全部保持不变；ACT 只改变策略怎样建模未来动作，不重新定义物理接口。",
-      "ACT 的训练目标不是单步 (oₜ,aₜ)，而是条件动作块分布 pθ(Aₜ|xₜ)。CVAE encoder 在训练时读取当前状态与真实动作块，产生 qφ(z|x,A)；decoder/Transformer 读取图像、状态、语言与 z 预测整个动作块。潜变量 z 用来承载同一条件下无法由 x 唯一确定的动作风格或轨迹模式。",
+      "沿用全课程案例，一条训练样本包含最近 K=2 帧双相机图像、当前机器人状态 qₜ、语言指令 ℓ，以及未来动作块 Aₜ∈R^{16×7}。这是本站为统一 BC/VLA 接口定义的 language-conditioned ACT-style 变体；原始 ACT 使用图像与当前关节状态，不含语言输入，且其 chunk horizon、观测历史和动作维度应以原论文/固定代码配置为准。",
+      "课程变体的训练目标不是单步 (oₜ,aₜ)，而是条件动作块分布 pθ(Aₜ|xₜ)。CVAE encoder 在训练时读取当前状态与真实动作块，产生 qφ(z|x,A)；decoder/Transformer 读取图像、状态、课程新增的语言条件与 z 预测整个动作块。潜变量 z 用来承载同一条件下无法由 x 唯一确定的动作风格或轨迹模式。",
       "推理时没有未来真实动作，因此训练期的 style encoder 被移除。ACT 论文的常用做法把 z 设为零；这意味着训练必须让 decoder 在该推理约定下可用。不能在部署时误把上一段预测当作 ground-truth action 喂入 encoder。",
       "动作块越过 episode 结尾时必须 padding，但 padding 不是专家的静止动作。time mask 应广播到 7 个动作维，再结合每维尺度或权重计算 reconstruction loss；归一化统计仍然只来自 BC 章冻结的 train split。",
       "Temporal ensemble 与 receding horizon 不同：前者把不同时刻预测、但指向同一执行时刻的动作做加权融合，减小预测跳变；后者决定每次只执行动作块前缀后再观测。二者都依赖绝对执行时刻或严格索引，延迟时不能只按数组位置拼接。",
@@ -61,7 +61,7 @@ export const supplementalLessonContent = {
     deepDive: [
       { title: "1. 训练看得到、推理看不到的信息", paragraphs: ["训练：A_true→style encoder→(μ,logσ²)→z；image/q/z→decoder→Â。推理：没有 A_true，style encoder 被丢弃，z 按实现约定取零或先验样本。", "如果把训练路径原样复制到推理，会产生无法获得的未来信息；如果训练时不检查 z=0 路径，重建很好也可能部署失败。"], takeaways: ["未来动作只属于训练后验。", "推理 z 约定必须与 checkpoint 配套。"] },
       { title: "2. Chunk 与 temporal ensemble 的时间语义", paragraphs: ["t=10 的模型预测执行时刻 10…19；t=11 又预测 11…20。执行时刻 12 同时有来自 query 10 的第 2 项、query 11 的第 1 项、query 12 的第 0 项。temporal ensemble 对这些候选按预测年龄加权。", "若模型查询晚到 150ms，数组第 0 项可能已经属于过去；必须先按 observation_time 与 action_dt 对齐，再参与融合。"], takeaways: ["融合对象是同一物理执行时刻。", "先做时间对齐，再做权重。"] },
-      { title: "3. 证据边界", paragraphs: ["【已确认】ACT 原论文使用 CVAE 动作块与 temporal ensembling；本站脚本只核对 KL、重参数化和融合算术。", "【合理推测】ACT 与 VLA 共用接口有助于定位 adapter/执行器错误。", "【个人观点】在 π₀.₅ 前完整做一次 ACT，比直接把它写成 baseline 名称更适合自学。", "【暂无法验证】你的双臂移动任务所需 H、KL 权重和 ensemble 衰减必须实测。"], takeaways: ["Toy 算术不是 ACT 训练复现。", "真实超参数不能从教程抄答案。"] },
+      { title: "3. 证据边界", paragraphs: ["【已确认】ACT 原论文使用 CVAE 动作块与 temporal ensembling，但没有语言输入；本站 K=2、H=16、dₐ=7 的 language-conditioned ACT-style 变体不是原论文复现。本站脚本只核对 KL、重参数化和融合算术。", "【合理推测】ACT-style baseline 与 VLA 共用接口有助于定位 adapter/执行器错误。", "【个人观点】在 π₀.₅ 前完整做一次窄动作块基线，比直接把 ACT 写成 baseline 名称更适合自学。", "【暂无法验证】你的双臂移动任务所需 H、KL 权重和 ensemble 衰减必须实测。"], takeaways: ["Toy 和课程变体都不是原始 ACT 复现。", "真实超参数不能从教程抄答案。"] },
     ],
     derivations: [
       {
@@ -122,7 +122,7 @@ export const supplementalLessonContent = {
     pitfalls: ["推理时调用训练后验 encoder", "padding 动作参与 loss", "把 temporal ensemble 当简单平滑", "晚到 chunk 从索引 0 重放", "ACT/VLA 使用不同物理动作接口"],
     review: ["ACT 的 style encoder 为什么推理时不能使用？", "temporal ensemble 融合的是哪些动作？", "ACT 成功能证明什么、不能证明什么？"],
     completion: "独立画出训练/推理数据流，运行并改坏一次 temporal ensemble Toy，再用同一个 PolicyResponse schema 包装 ACT 与 VLA 输出。",
-    sources: [{ title: "ACT paper", url: "https://arxiv.org/abs/2304.13705", role: "原论文" }, { title: "ACT official code · 742c753", url: "https://github.com/tonyzhaozh/act/tree/742c753c0d4a5d87076c8f69e5628c79a8cc5488", role: "固定实现参照" }],
+    sources: [{ title: "ACT paper", url: "https://arxiv.org/abs/2304.13705", role: "原论文" }, { title: "ACT official code · 742c753", url: "https://github.com/tonyzhaozh/act/tree/742c753c0d4a5d87076c8f69e5628c79a8cc5488", role: "固定实现参照" }, { title: "Auto-Encoding Variational Bayes", url: "https://arxiv.org/abs/1312.6114", role: "ELBO 与重参数化" }, { title: "Deep Conditional Generative Models", url: "https://proceedings.neurips.cc/paper/2015/hash/8d55a249e6baa5c06772297520da2051-Abstract.html", role: "CVAE" }],
     visual: "act",
   },
 
@@ -161,7 +161,7 @@ export const supplementalLessonContent = {
   },
 
   "mobile-dual-arm-pi-deployment": {
-    lead: "本章把你描述的双臂、2-DOF 腰部、移动底盘和 Thor 当成一个异构全身系统，而不是把 openpi 示例里的动作向量直接改个长度。22 步是最小工程主线；采集、训练和安全审批的墙钟时间不能从网页预先确定。",
+    lead: "双臂、2-DOF 腰部、移动底盘和 Thor 共同构成一个异构全身系统。直接修改 openpi 示例动作向量的长度无法解决 frame、单位、mode、padding 和安全边界。下面 22 步给出最小工程主线；采集、训练和安全审批的实际耗时仍取决于现场条件。",
     objectives: [
       "在第 1 步识别 Thor 型号、内存、JetPack/L4T、CUDA/TensorRT、功耗模式与热状态。",
       "为双臂、夹爪、2-DOF 腰部和底盘建立命名、单位、frame、频率、mask 与限幅完整的 whole-body contract。",
@@ -181,7 +181,7 @@ export const supplementalLessonContent = {
     theory: [
       "先质疑一个常见前提：有 Thor 不等于 π₀.₅ 一定能在本机按目标频率运行。模型框架、ARM64 依赖、JetPack/CUDA 版本、相机预处理、内存峰值、功耗/散热和精度转换都会决定端到端延迟。峰值 TOPS 不能替代同一请求边界的 p50/p95/p99 和动作质量回归。",
       "截至 2026-08-09，openpi 主线公开列出的可下载/可微调路径是 π₀、π₀-FAST 与 π₀.₅，并提供 JAX 和部分 PyTorch 路径；本站未在官方主线确认与 π₀.₅ 同等完整的 π0.6 checkpoint/config/deploy 路线。因此工程主线固定为 π₀.₅，π0.6 只设开放性检查点：只有在你拥有合法权重、代码、输入输出定义和可复现实验后才能替换。",
-      "openpi 的公开动作统计包含 Mobile ALOHA、dual UR5e、ARX mobile 等本体，并给出某些默认 16 维映射；但你的 2-DOF 腰部不是这些默认契约的一部分，底盘也未确认是差速、全向还是速度/位移接口。直接复用其切片或 norm stats 是未证实且高风险的。正确方法是建立物理 active dimensions，再 pad 到模型维度，输出时按 mask/slice 取回，统计只从兼容训练集计算。",
+      "openpi 的公开动作统计包含 Mobile ALOHA、dual UR5e、ARX mobile 等本体，并给出某些默认 16 维映射；但你的 2-DOF 腰部不是这些默认契约的一部分，底盘也未确认是差速、全向还是速度/位移接口。直接复用其切片或 norm stats 是未证实且高风险的。固定 revision 15a9616 中，π₀.₅ 默认走 q01/q99 quantile normalization；z-score 的 mean/std 是另一条显式分支。正确方法是建立物理 active dimensions，再 pad 到模型维度，按 checkpoint 的 normalization revision 做对应逆变换，输出时按 mask/slice 取回。统计只从兼容 train split 计算。",
       "全身策略存在不同时间尺度：机械臂/夹爪、腰部和底盘未必接受同类型命令或同频率。v1 更稳妥的工程路线是先做 mode-gated sequential control（移动、稳定、再操作），同时保留统一观测；只有在任务证明确实需要动态全身协同、数据覆盖充分且安全层支持时，再开放 base+waist+arms 同时动作。",
       "Thor 的正确位置可以有三种：A 原生运行 PyTorch/openpi；B 把已验证模型转换为 TensorRT；C Thor 负责传感、机器人客户端和安全，而策略在工作站/GPU 服务器。三条路径共用同一 PolicyRequest/Response 和 action contract，所以能用证据比较。TensorRT 只有在逐层/端到端数值 parity、动作分布与 rollout 回归都通过后才是优化，不是默认捷径。",
     ],
@@ -192,14 +192,14 @@ export const supplementalLessonContent = {
       { title: "4. 为什么先顺序模式，再全身协同", paragraphs: ["移动底盘改变相机视角和机械臂基座 frame，腰部又改变双臂工作空间；同时动作使数据覆盖和碰撞约束呈组合增长。第一版定义 mode∈{navigate,stabilize,manipulate,recover}，在 manipulate 时锁定底盘或严格限速，可显著降低调试维度。", "这不是永远禁止 whole-body policy。通过 sequential baseline 后，用明确任务比较 simultaneous 是否提升成功/时间，并检查 near-miss、抖动、定位漂移和动作延迟；只有收益超过风险才扩展。"], takeaways: ["先建立可比较 baseline。", "是否同时动作由任务证据决定。"] },
       { title: "5. 22 步不是 22 条命令", paragraphs: ["每一步都有输入、操作、产物、门禁和失败回退。步骤 1–7 在没有 GPU 训练前完成；8–11 确保数据真实可回放；12–18 才进入模型；19–22 才允许从 shadow 逐级接触硬件。", "30–60h 是已有机器人 SDK、相机/急停和基本遥操作的工程学习预算，不包含大规模采集、长训练、硬件维修、审批或算法不收敛。把它当普遍工期是不成立的。"], takeaways: ["按 Gate 完成，不按小时强行推进。", "墙钟时间与学习预算分开。"] },
     ],
-    formula: { latex: String.raw`a_t^{\mathrm{phys}}=\operatorname{Safety}\!\left(\operatorname{Slice}_m\left(\sigma\odot \hat a_t+\mu\right),q_t,\mathcal W\right),\qquad R_{\mathrm{queue}}=\left\lceil\frac{L^{\mathrm{e2e}}_{p99}+M}{\Delta t_a}\right\rceil`, symbols: [
-      { symbol: "âₜ", meaning: "模型 padded/normalized action。" }, { symbol: "μ,σ", meaning: "当前数据 revision 的动作统计。" }, { symbol: "Sliceₘ", meaning: "按 mode 与 valid mask 取出真实物理维。" }, { symbol: "Safety", meaning: "独立限速、工作空间、碰撞与状态机；不是神经网络层。" }, { symbol: "W", meaning: "机器人/环境约束集合。" }, { symbol: "Lᵉ²ᵉₚ₉₉", meaning: "从同一观测时间到动作可用的端到端 p99。" }, { symbol: "Rqueue", meaning: "动作队列建议预留步数。" },
-    ], note: "p99+margin 的队列公式是工程预算，不是安全证明；网络、推理和执行延迟相关时不能把各自 p99 当统计恒等式相加。优先测同一请求边界的端到端分布。" },
-    practice: { title: "22 步 Thor 全身部署主线", summary: "页面的跟做模式给出每一步的动作、产物、验收与回退；先在离线/shadow 完成，再由独立安全门禁批准真实执行。", steps: ["按 22 步完成 Gate A–F。"], acceptance: ["Thor 软硬件 revision、功耗模式、性能和热状态有可复现记录。", "whole-body contract 包含所有 slice 的 name/type/frame/unit/dt/limit/mask/norm revision。", "π₀.₅ adapter 通过 pad/slice/finite/round-trip 与一批过拟合。", "ACT 与 π₀.₅ 使用同一物理接口和评测协议。", "shadow、单子系统和组合灰度均有 go/no-go 日志。", "后训练数据不污染冻结测试集。"], status: "配方核验", code: "python public/labs/whole_body_action_contract.py", expected: ["本站标准库脚本会打印示例 active_dim、pad_dim、slice 表、round-trip 误差与故障注入；真实机器数值仍待填写。"], debugging: ["环境不兼容先退回远端策略服务，不同时改模型和控制协议。", "任何 frame/unit/mask 不确定都停止在 shadow。", "Thor 降频先查功耗模式、温度和电源，再讨论模型优化。"] },
+    formula: { latex: String.raw`a_t^{\mathrm{phys}}=\operatorname{Safety}\!\left(\operatorname{Slice}_m\left(\operatorname{Norm}^{-1}_{r}(\hat a_t)\right),q_t,\mathcal W\right),\qquad R_{\mathrm{queue}}=\left\lceil\frac{L^{\mathrm{e2e}}_{p99}+M}{\Delta t_a}\right\rceil`, symbols: [
+      { symbol: "âₜ", meaning: "模型 padded/normalized action。" }, { symbol: "Normᵣ⁻¹", meaning: "由 normalization revision r 指定的逆变换；π₀.₅ 固定配置默认用 q01/q99 quantile，显式 z-score 分支才用 mean/std。" }, { symbol: "Sliceₘ", meaning: "按 mode 与 valid mask 取出真实物理维。" }, { symbol: "Safety", meaning: "独立限速、工作空间、碰撞与状态机；不是神经网络层。" }, { symbol: "W", meaning: "机器人/环境约束集合。" }, { symbol: "Lᵉ²ᵉₚ₉₉", meaning: "从同一观测时间到动作可用的端到端 p99。" }, { symbol: "Rqueue", meaning: "动作队列建议预留步数。" },
+    ], note: "反归一化必须跟随 checkpoint/config 的 normalization revision，不能默认写成 z-score。固定 openpi 15a9616 的 π₀.₅ 路径选择 q01/q99 quantile；同一实现也保留显式 z-score 分支。p99+margin 的队列公式是工程预算，不是安全证明；优先测同一请求边界的端到端分布。" },
+    practice: { title: "22 步 Thor 全身部署主线", summary: "页面的跟做模式给出每一步的动作、产物、验收与回退；先在离线/shadow 完成，再由独立安全门禁批准真实执行。配套脚本只验证示例契约的 quantile round-trip、padding/mode mask 和两类无效物理动作拒绝。", steps: ["按 22 步完成 Gate A–F。"], acceptance: ["Thor 软硬件 revision、功耗模式、性能和热状态有可复现记录。", "whole-body contract 包含所有 slice 的 name/type/frame/unit/dt/limit/mask/norm revision。", "π₀.₅ adapter 通过 pad/slice/finite/round-trip 与一批过拟合。", "ACT 与 π₀.₅ 使用同一物理接口和评测协议。", "shadow、单子系统和组合灰度均有 go/no-go 日志。", "后训练数据不污染冻结测试集。"], status: "配方核验", code: "python public/labs/whole_body_action_contract.py", expected: ["脚本打印示例 active_dim=20、pad_dim=32、六个 slice、q01/q99 教学 normalization revision、round-trip 与 valid/mode mask。", "脚本捕获 non-finite 与 limit 两类故障并以 WHOLE-BODY CONTRACT PASS 结束；它不验证真实 robot I/O、真实 train-split stats、碰撞或安全。"], debugging: ["环境不兼容先退回远端策略服务，不同时改模型和控制协议。", "任何 frame/unit/mask 不确定都停止在 shadow。", "Thor 降频先查功耗模式、温度和电源，再讨论模型优化。"] },
     pitfalls: ["把 Thor 峰值算力当端到端频率", "直接照抄 Mobile ALOHA 的动作切片和 norm", "把差速和全向底盘都写成 base[2]", "腰部加入向量但不加入 frame/碰撞模型", "一开始同时移动底盘、腰部和双臂", "TensorRT/低精度无动作 parity 就上真机", "策略服务断开后重复旧 chunk", "π0.6 没有可复现公开链路却写成主线", "人类接管动作覆盖策略原始输出", "安全 filter 只在 VLA 路径而 ACT baseline 绕过"],
     review: ["为什么 Thor 不自动保证 π₀.₅ 实时？", "padding 与跨本体适配的区别是什么？", "什么时候选远端策略服务？", "为什么第一版建议 sequential mode？", "从哪一步开始可以让动作接触硬件？"],
     completion: "另一位工程师能从干净 Thor 环境复现固定输入 smoke、whole-body contract、策略服务和 shadow 日志；真实动作只在独立急停/限速/碰撞/接管门禁全部有证据时执行。",
-    sources: [{ title: "openpi · main@15a9616", url: "https://github.com/Physical-Intelligence/openpi/tree/15a9616a00943ada6c20a0f158e3adb39df2ccac", role: "2026-08-08 固定实现" }, { title: "openpi normalization statistics", url: "https://github.com/Physical-Intelligence/openpi/blob/15a9616a00943ada6c20a0f158e3adb39df2ccac/docs/norm_stats.md", role: "固定 revision 本体动作定义" }, { title: "openpi ALOHA real example", url: "https://github.com/Physical-Intelligence/openpi/tree/15a9616a00943ada6c20a0f158e3adb39df2ccac/examples/aloha_real", role: "固定 revision server/client 参考" }, { title: "Jetson AGX Thor User Guide", url: "https://docs.nvidia.com/jetson/agx-thor-devkit/user-guide/latest/", role: "官方硬件/软件" }, { title: "Jetson Thor power and performance", url: "https://docs.nvidia.com/jetson/archives/r39.2/DeveloperGuide/SD/PlatformPowerAndPerformance/JetsonThor.html", role: "功耗与 tegrastats" }, { title: "π*0.6 / RECAP", url: "https://www.pi.website/blog/pistar06", role: "官方研究报告；非公开部署证明" }],
+    sources: [{ title: "openpi · main@15a9616", url: "https://github.com/Physical-Intelligence/openpi/tree/15a9616a00943ada6c20a0f158e3adb39df2ccac", role: "2026-08-08 固定实现" }, { title: "openpi normalization config · 15a9616", url: "https://github.com/Physical-Intelligence/openpi/blob/15a9616a00943ada6c20a0f158e3adb39df2ccac/src/openpi/training/config.py", role: "π₀.₅ 默认 quantile 分支" }, { title: "openpi normalization transforms · 15a9616", url: "https://github.com/Physical-Intelligence/openpi/blob/15a9616a00943ada6c20a0f158e3adb39df2ccac/src/openpi/transforms.py", role: "q01/q99 与 z-score 正逆变换" }, { title: "openpi normalization statistics", url: "https://github.com/Physical-Intelligence/openpi/blob/15a9616a00943ada6c20a0f158e3adb39df2ccac/docs/norm_stats.md", role: "固定 revision 本体动作定义" }, { title: "openpi ALOHA real example", url: "https://github.com/Physical-Intelligence/openpi/tree/15a9616a00943ada6c20a0f158e3adb39df2ccac/examples/aloha_real", role: "固定 revision server/client 参考" }, { title: "Jetson AGX Thor User Guide", url: "https://docs.nvidia.com/jetson/agx-thor-devkit/user-guide/latest/", role: "官方硬件/软件" }, { title: "Jetson Thor power and performance", url: "https://docs.nvidia.com/jetson/archives/r39.2/DeveloperGuide/SD/PlatformPowerAndPerformance/JetsonThor.html", role: "功耗与 tegrastats" }, { title: "π*0.6 / RECAP", url: "https://www.pi.website/blog/pistar06", role: "官方研究报告；非公开部署证明" }],
     visual: "whole-body",
   },
 } satisfies Record<string, LessonDetail>;

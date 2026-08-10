@@ -15,8 +15,9 @@ from math import cos, exp, isfinite, pi, sin, sqrt, tanh
 import random
 
 
-def make_schedule(steps: int = 24) -> tuple[list[float], list[float], list[float]]:
-    betas = [0.015 + (0.12 - 0.015) * index / (steps - 1) for index in range(steps)]
+def make_schedule(steps: int = 50) -> tuple[list[float], list[float], list[float]]:
+    # The terminal signal must be small before approximating q(x_T) by N(0,1).
+    betas = [0.01 + (0.20 - 0.01) * index / (steps - 1) for index in range(steps)]
     alphas = [1.0 - beta for beta in betas]
     alpha_bars: list[float] = []
     product = 1.0
@@ -157,11 +158,14 @@ def sample(model: TinyDenoiser, rng: random.Random, count: int = 400) -> list[fl
 
 
 def smoke_test() -> None:
+    _, _, alpha_bars = make_schedule()
+    assert alpha_bars[-1] < 0.01, alpha_bars[-1]
     model, losses = train()
     samples = sample(model, random.Random(23))
     negative = sum(value < -0.8 for value in samples)
     positive = sum(value > 0.8 for value in samples)
     central = sum(abs(value) < 0.6 for value in samples)
+    max_abs = max(abs(value) for value in samples)
     finite = all(isfinite(value) for value in samples)
     expert_mean = sum(sample_expert(random.Random(index)) for index in range(1000)) / 1000.0
 
@@ -169,16 +173,19 @@ def smoke_test() -> None:
     assert negative > len(samples) * 0.20, negative
     assert positive > len(samples) * 0.20, positive
     assert central < len(samples) * 0.30, central
+    assert max_abs < 4.0, max_abs
     assert abs(expert_mean) < 0.25, expert_mean
 
     ordered = sorted(samples)
     quantiles = [ordered[int((len(ordered) - 1) * q)] for q in (0.1, 0.5, 0.9)]
     print("training MSE checkpoints:", [round(value, 4) for value in losses])
+    print(f"terminal alpha_bar={alpha_bars[-1]:.6f} (<0.01, so N(0,1) initialization is an explicit approximation)")
     print(f"single-MSE baseline (expert mean): {expert_mean:.4f}")
     print("sample q10/q50/q90:", [round(value, 3) for value in quantiles])
     print(f"mode counts: negative={negative}, central={central}, positive={positive}, total={len(samples)}")
-    print("PASS: the trained denoiser samples both expert modes instead of only their mean")
-    print("BOUNDARY: this 1D test does not establish image conditioning, trajectory quality, or robot success")
+    print(f"sample max_abs={max_abs:.3f}")
+    print("PASS: the trained denoiser approximately samples both expert modes instead of only their mean")
+    print("BOUNDARY: finite-step N(0,1) initialization remains approximate; this does not establish robot-policy quality")
 
 
 if __name__ == "__main__":

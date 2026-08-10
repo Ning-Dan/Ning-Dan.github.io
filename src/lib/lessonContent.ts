@@ -75,11 +75,11 @@ export const lessonContent: Record<string, LessonDetail> = {
       { duration: "2:00–2:30", title: "运行执行器并写接口", activity: "运行 chunked_controller；观察限幅、p99 余量、TTL、乱序和 NaN；随后补齐 request/response schema。", deliverable: "终端 PASS、一次故障记录和一份 action contract。" },
     ],
     theory: [
-      "经典状态反馈可写成 uₜ=κ(xₜ)，假设控制器得到足够的状态。真实机器人更接近 POMDP：环境状态 sₜ 包含物体真实位姿、接触、摩擦等，摄像头和编码器只给观测 oₜ；遮挡或速度不可直接观测时，策略需要历史 hₜ=(oₜ₋K₊₁,…,oₜ)、状态估计或内部记忆。语言 ℓ 描述任务目标，但不会自动补齐几何和动力学状态。",
+      "经典状态反馈可写成 uₜ=κ(xₜ)，假设控制器得到足够的状态。真实机器人更接近 POMDP：环境状态 sₜ 包含物体真实位姿、接触、摩擦等，摄像头和编码器只给观测 oₜ。一般 belief 依赖动作—观测历史 hₜ=(o₀,a₀,…,aₜ₋₁,oₜ)，因为过去执行的动作会改变状态；只输入最近 K 帧的 VLA 使用的是观测窗口近似，而不是完整 belief。语言 ℓ 描述任务目标，但不会自动补齐几何和动力学状态。",
       "VLA 用图像、语言、本体状态等条件生成动作或动作块 Aₜ。它可以滚动执行：预测 H 步，只执行前 E≤H 步，再获取新观测。这样做减少开环时间，却不把 BC 型 VLA 变成 MPC：MPC 通常在在线阶段使用显式/学习动力学、代价和约束求解优化；BC 型 VLA 主要从演示分布离线学习条件策略。二者可以组合，例如 VLA 给子目标或候选轨迹，MPC/控制器负责可行化和跟踪。",
       "动作输出必须是完整契约，而不是一串浮点数。常见选择包括 EEF 位置/姿态增量、twist、关节位置/速度参考、gripper 命令或技能子目标。每一种都要声明 command_type、shape、frame、rotation convention、linear/angular unit、Δt、H、gripper 语义、valid mask、归一化 revision 与逆变换。把 base-frame delta 当成 tool-frame delta，即使数值很小也会系统性走错方向。",
       "必须分清三种频率：动作块内命令采样率 f_action=1/Δt_c；模型查询/重规划频率 f_policy 由 E、推理延迟和异步队列决定；IK/OSC/关节/力矩伺服频率 f_servo 通常最高。VLA 不应直接替代高频稳定化、限速、碰撞检测、工作空间约束和电机保护。一个 20Hz 动作参考可以由 1kHz 伺服在 50 个内部周期里跟踪。",
-      "策略服务还需要时间协议。request 至少携带 schema_version、request_id、observation_time、camera_names、joint_order、instruction 和模型/统计 revision；response 携带生成依据的 observation_time、action_dt、frame/unit、动作块、created_time 与有效期。客户端必须拒绝 schema 不符、NaN/Inf、乱序和过期结果，跳过已经属于过去的动作前缀，并在没有新动作时进入定义明确的 controlled stop。",
+      "策略服务还需要时间协议。request 至少携带 schema_version、request_id、observation_time、clock_id、camera_names、joint_order、instruction 和模型/统计 revision；response 回传 based_on_observation_time，并另给 action_start_time 与 action_dt。前者用于新鲜度/TTL，后两者决定每个动作的排程，不能混成一个时间戳。客户端必须拒绝 schema 不符、NaN/Inf、乱序和过期结果，跳过已经属于过去的动作前缀，并在没有新动作时进入定义明确的 controlled stop。",
     ],
     deepDive: [
       {
@@ -92,9 +92,10 @@ export const lessonContent: Record<string, LessonDetail> = {
         ],
       },
       {
-        title: "1. 五层闭环：每一层只承担自己的责任【必须掌握】",
+        title: "1. 本站五层工程参考架构【必须掌握】",
         paragraphs: [
-          "第一层是任务/语言：用户给目标和约束。第二层是 VLA：把多模态观测变成短时域动作候选。第三层是 action adapter＋safety：反归一化、frame 变换、限幅、工作空间/碰撞检查、TTL 与接管。第四层是轨迹与经典控制：IK、trajectory generation、OSC/MPC、关节/力矩伺服。第五层是机器人与传感器，产生下一轮观测。",
+          "这是本站推荐的工程分层，不是 VLA 的唯一行业定义。第一层是任务/语言：用户给目标和约束。第二层是 VLA：把多模态观测变成动作候选；这里的“多模态”是同一决策时刻附近的 RGB/深度、关节与夹爪状态、力觉及语言等异类信息包，不等于必须具备其中全部。动作可以是 H=1，也可以是短 action chunk。第三层是 action adapter＋safety；第四层是轨迹与经典控制；第五层是机器人与传感器。模块放在同进程还是不同进程是实现选择。",
+          "反归一化是把训练时缩放后的无量纲模型输出还原为物理命令。例如 z-score 用 a=σâ+μ，quantile 归一化则用 q01/q99 从 [−1,1] 逆映射；必须按 checkpoint 的 normalization_revision 选择逆变换，不能只凭 shape 猜。之后才做 frame 变换、限幅、工作空间/碰撞检查、TTL 与接管，再由 IK、trajectory generation、OSC/MPC 或关节/力矩伺服跟踪。",
           "边界不是说 VLA 永远不能输出关节或 torque，而是越靠近执行器，数据契约、实时性、稳定性和安全验证越严格。若模型直接给 torque，下游仍必须有硬实时保护和独立急停；神经网络的置信度不是稳定性或功能安全证明。",
         ],
         takeaways: ["VLA 输出是候选命令，不是安全许可。", "反归一化与 frame 变换属于执行协议。", "安全层必须独立于模型成功率。"],
@@ -102,7 +103,7 @@ export const lessonContent: Record<string, LessonDetail> = {
       {
         title: "2. POMDP 与历史：为什么一张图通常不够【概念已确认】",
         paragraphs: [
-          "MDP 假设状态 sₜ 足以决定未来；POMDP 中只能得到 oₜ∼O(o|sₜ)。例如单张 RGB 图可能看不到遮挡后的物体、接触力和速度方向；本体 qₜ 也未必包含夹爪实际接触。策略可用 K 帧历史、递归状态、显式滤波或外部世界状态近似 belief bₜ=P(sₜ|hₜ)。",
+          "MDP 假设状态 sₜ 足以决定未来；POMDP 中只能得到 oₜ∼O(o|sₜ)。例如单张 RGB 图可能看不到遮挡后的物体、接触力和速度方向；本体 qₜ 也未必包含夹爪实际接触。一般历史写成 hₜ=(o₀,a₀,…,aₜ₋₁,oₜ)，belief 为 bₜ=P(sₜ|hₜ)，并通过旧 belief、已执行动作和新观测更新。VLA 常只输入观测窗口 õₜ=oₜ₋K₊₁:ₜ、递归状态或显式估计器来近似这个 belief；不能把观测窗口本身定义成完整 POMDP 历史。",
           "增加历史并非越多越好：K 增大会增加显存与延迟，且多相机/状态时间不齐会制造伪运动。先列出任务决策真正需要的隐藏变量，再决定用传感器、估计器还是模型记忆补足。",
         ],
         takeaways: ["观测不等于状态。", "历史长度对应物理时间 KΔt，不只是 token 数。", "缺少接触信息不能靠语言补齐。"],
@@ -118,15 +119,16 @@ export const lessonContent: Record<string, LessonDetail> = {
       {
         title: "4. 数值例：20Hz 动作、5Hz 重规划、1kHz 伺服【必须手算】",
         paragraphs: [
-          "设 Δt_c=50ms，则 f_action=20Hz。H=16 覆盖 0.8s；每次执行 E=4 步，理想重观测间隔 EΔt_c=0.2s，即 f_policy=5Hz。若伺服为 1kHz，每个动作参考之间有 50 个伺服 tick。这里的 5Hz 只在新 chunk 能按时返回时成立。",
-          "若只掌握分组件统计，可把推理 p99=140ms、网络 p99=30ms、安全余量=30ms 相加成 200ms 的保守工程启发式，于是至少预留 ceil(200/50)=4 个动作；它不是端到端 p99 的统计恒等式。部署时应优先在同一请求边界实测 end-to-end p99，并更早发请求或缩短推理。",
+          "设 Δt_c=50ms，则动作参考为 20Hz。H=16 表示一份 chunk 覆盖 0.8s；执行 E=4 个参考需要 0.2s，所以理想策略请求节拍为 5Hz。1kHz 伺服不会每毫秒重新调用 VLA，而是在相邻 50ms 参考之间运行 50 次反馈跟踪/插值。三种频率属于三层工作，不是在重复做同一件事。",
+          "把时间轴写开：旧 chunk 在 t=0、50、100、150ms 执行前四项；到 200ms 选择新观测并发起下一请求，同时旧 chunk 仍剩 12 项用于覆盖计算延迟。若端到端 p99 与余量对应 R=4 个动作，则异步方案至少要满足 H−E≥R；新响应到达后按 action_start_time 跳过已过时前缀，再在未来排程点接管。这里的 5Hz 是理想请求节拍，响应超时或队列不足时不能硬称 5Hz 闭环。",
+          "若只有推理 p99=140ms、网络 p99=30ms 和 30ms margin，把它们相加得到 200ms、R=ceil(200/50)=4 只能叫初始预算启发式：它可能高估，也可能低估真正 end-to-end p99，并非“保守”保证。生产应在同一请求边界直接测 end-to-end p99；若必须从组件分位数构造概率保证，需要显式分配尾部风险，而不是直接相加各自 p99。",
         ],
         takeaways: ["所有延迟都先换成同一单位。", "用 p99 而非平均值决定队列。", "H 决定覆盖，E 决定理想反应间隔。"],
       },
       {
         title: "5. 策略接口的最小字段【工程建议】",
         paragraphs: [
-          "请求示例字段：schema_version、request_id、observation_time、camera_names/每帧时间、joint_names 与 q、instruction、requested_horizon、checkpoint_id、normalization_revision。响应示例字段：对应 request_id/observation_time、command_type、frame、units、rotation convention、action_dt、actions:[H,dₐ]、valid mask、server_created_time。",
+          "请求示例字段：schema_version、request_id、observation_time、clock_id、camera_names/每帧时间、joint_names 与 q、instruction、requested_horizon、checkpoint_id、normalization_revision。响应示例字段：schema_version、对应 request_id/based_on_observation_time、clock_id、action_start_time、command_type、frame、units、rotation convention、action_dt、actions:[H,dₐ]、valid mask、model/normalization/action-contract revision 与 server_created_time。",
           "客户端验证顺序建议为：版本与 shape→finite→时间/乱序→frame/unit→反归一化→速度/加速度/工作空间/碰撞→执行。日志要保留原始请求、原始响应、裁剪后动作、拒绝原因和实际执行时间，才能区分模型错、协议错和控制错。",
         ],
         takeaways: ["协议字段要版本化。", "原始动作与安全处理后动作都要记录。", "任何拒绝都必须落到确定的 fallback。"],
@@ -134,7 +136,7 @@ export const lessonContent: Record<string, LessonDetail> = {
       {
         title: "6. 现有一维脚本验证什么【实验边界】",
         paragraphs: [
-          "脚本用时间戳 action chunk、延迟网络和 SafeExecutor 模拟一维位置参考。默认延迟样本的最近秩 p99 为 220ms，加 30ms 余量、50ms/action 得 reserve=5；动作被 max_step=0.08 限幅，超过 180ms TTL 后保持当前位置，并拒绝旧 observation_time 与 NaN。",
+          "脚本用带 observation_time 与 action_start_time 的 action chunk、延迟网络和 SafeExecutor 模拟一维位置参考。前者判断观测新鲜度，后者决定第 i 项何时执行。默认端到端延迟样本的最近秩 p99 为 220ms，加 30ms 余量、50ms/action 得 reserve=5；动作被 max_step=0.08 限幅，超过 180ms TTL 后保持当前位置，并拒绝旧 observation_time 与 NaN。",
           "它适合验证控制流和断言，不模拟连续动力学、速度/加速度、真实网络时钟漂移或安全停机。把 hold position 当 controlled stop 只是一维教学选择；重力臂、移动底盘和力控任务可能需要不同 stop policy。",
         ],
         takeaways: ["先让 toy 断言抓协议错误。", "受控停止行为依机器人而定。", "脚本 PASS 不等于真实系统安全。"],
@@ -151,20 +153,20 @@ export const lessonContent: Record<string, LessonDetail> = {
       note: "这是条件策略的动作块采样式，不是 MPC 优化目标，也未表达下游 frame 变换、约束和伺服。实际接口必须额外携带 action contract 与时间戳。",
     },
     practice: {
-      title: "时间戳动作队列与受控停止",
-      summary: "一维 SafeExecutor 注入 10–220ms 延迟，计算 p99 reserve，并验证 max-step 限幅、TTL、乱序拒绝和 NaN 门禁。",
+      title: "时间戳 action chunk 执行器与受控停止",
+      summary: "一维 SafeExecutor 显式区分观测新鲜度与动作排程，注入 10–220ms 端到端延迟，计算 p99 reserve，并验证 max-step 限幅、TTL、乱序拒绝和 NaN 门禁。",
       steps: ["运行默认脚本并读懂 p99/reserve 计算", "核对前三次状态为何每次只增加 0.08", "确认 180ms TTL 后保持 0.24 而不重放旧动作", "追踪较新 chunk 接受、较旧响应拒绝的 observation_time", "故意把一个 target 改为 NaN 或缩短 TTL，让断言捕获故障", "恢复脚本并为真实机器人写出不同的 controlled-stop 策略"],
       acceptance: ["输出 ALL CHECKS PASSED", "p99=220ms 且 reserve=5 actions", "limited states 为 [0.08,0.16,0.24]", "过期时保持最后位置且旧响应被拒绝", "能解释该实验没有证明真实机器人安全"],
       status: "已验证",
       code: "python public/labs/chunked_controller.py",
-      prerequisites: ["Python 3.10+ 标准库", "知道 H、E、Δt、observation_time 与 request_id 的含义"],
+      prerequisites: ["Python 3.10+ 标准库", "知道 H、E、Δt、observation_time、action_start_time 与 request_id 的含义"],
       expected: ["第一行打印 latency p99=220 ms 与 reserve=5", "随后打印限幅状态、controlled-stop hold 和 stale reject 计数", "最后两行显示时间/TTL/NaN PASS 与 ALL CHECKS PASSED"],
       debugging: ["若 reserve 不为 5，检查 percentile 是否用最近秩及延迟单位是否为秒", "若状态跳得过大，检查 target-position 的 delta 是否在执行前限幅", "若旧 chunk 被接受，检查 observation_time 是否严格大于 latest_observation_time", "若过期后仍执行，检查 TTL 是相对生成所依据的 observation_time，而不是到达时间"],
     },
     pitfalls: ["把低频 VLA 输出直接当 torque", "delta pose 未声明 base/tool frame", "预测 H 步就开环执行 H 步", "只看平均延迟", "把 observation_time、server time 和 action time 混用", "过期后沿用旧 chunk", "把 hold position 当所有机器人的安全停止"],
     review: ["POMDP 中 state、observation、history/belief 分别是什么？", "VLA 与 MPC 都用滚动时域，为什么不是同一种方法？", "20Hz、H=16、E=4 分别对应多长覆盖和理想重规划频率？", "模型输出 twist 时必须声明哪些 action contract 字段？", "为什么策略服务 PASS 仍不能替代独立安全层？"],
     completion: "画出 VLA、动作适配、安全/轨迹层、经典控制器与机器人五层闭环，并标出频率。",
-    sources: [{ title: "Robot Learning: A Tutorial", url: "https://arxiv.org/abs/2510.12403", role: "课程结构" }, { title: "MIT Underactuated", url: "https://underactuated.csail.mit.edu/", role: "控制参照" }], visual: "pipeline",
+    sources: [{ title: "Kaelbling, Littman & Cassandra · Planning and Acting in Partially Observable Stochastic Domains", url: "https://cs.brown.edu/courses/csci2951-k/papers/kaelbling98.pdf", role: "POMDP belief 与动作—观测历史" }, { title: "Robot Learning: A Tutorial", url: "https://arxiv.org/abs/2510.12403", role: "课程结构" }, { title: "MIT Underactuated", url: "https://underactuated.csail.mit.edu/", role: "控制参照" }], visual: "pipeline",
   },
 
   history: {
@@ -179,7 +181,7 @@ export const lessonContent: Record<string, LessonDetail> = {
     ],
     theory: [
       "第一阶段解决‘怎样稳定学动作’。Behavior Cloning 把示范变成监督学习；ACT 用 action chunk 与 temporal ensembling 建模短时轨迹；Diffusion Policy 让连续动作分布可多峰。这些是后来 VLA 的动作学习基础，但仅有视觉条件动作、没有语言/视觉语言预训练接口时，不应为了叙事方便统称 VLA。",
-      "第二阶段解决‘怎样扩展到很多任务并利用语义’。RT-1 展示多任务机器人 Transformer 路线；RT-2 把预训练 VLM 与动作共同表示，核心问题从识别任务 ID 转向让网页视觉语言知识参与机器人动作选择。官方实验支持论文设定中的能力主张，但不能据此推出任意场景、任意机器人都能泛化。",
+      "第二阶段解决‘怎样扩展到很多任务并利用语义’。RT-1 已经接收自然语言指令与图像历史，并展示大规模多任务机器人 Transformer；RT-2 的新增点不是把 task ID 换成语言，而是把预训练 VLM 与机器人轨迹共同微调，并把动作表示为文本 token，使网页视觉语言知识有机会迁移到动作选择。官方实验支持论文设定中的能力主张，但不能据此推出任意场景、任意机器人都能泛化。",
       "第三阶段解决‘怎样共享跨机器人数据’。Open X-Embodiment 推动跨 embodiment 数据混合，Octo 等探索开放 generalist policy，OpenVLA 提供更可研究的开源 VLA 路线。真正难点不只是收集更多轨迹：不同机器人 action dimension、frame、unit、dt、gripper 和相机布局并不天然相同，padding 不能代替 canonicalization。",
       "第四阶段继续处理连续高频动作、轻量部署、开放环境和人形全身控制。不同工作分别改动作 token/continuous expert、训练数据、层级语义或工程栈，不应被压成一条‘模型越来越大所以越来越通用’的直线。模型报告的新能力必须和其数据、benchmark、hardware、release 边界一起阅读。",
       "七类瓶颈仍贯穿各代系统：真实机器人数据昂贵且偏斜；跨本体动作语义难统一；VLM 语义不自动变成毫米级控制；闭环误差随长任务累积；大模型延迟与算力限制控制频率；benchmark 容易受场景/语言泄漏和小样本影响；概率模型输出不提供功能安全保证。",
@@ -202,7 +204,7 @@ export const lessonContent: Record<string, LessonDetail> = {
     pitfalls: ["把所有视觉策略回溯命名为 VLA", "模型更大等同能力更强", "demo 视频代替受控评测", "忽略数据泄漏"],
     review: ["ACT/Diffusion 为后续 VLA 提供什么，又缺少什么？", "RT-2 相对 RT-1 的问题变化是什么？", "Open X-Embodiment 为什么重要又为什么不够？", "更强 VLM 为什么不必然带来更精细动作？", "A/B/C/D 四类证据如何避免把官方报告写成个人复现？"],
     completion: "交付一页可审计地图，并在十分钟内讲清四次问题演化、代表证据和七类瓶颈；不靠堆模型名或动态数字。",
-    sources: [{ title: "RT-2", url: "https://robotics-transformer2.github.io/", role: "VLM→VLA 转折" }, { title: "Open X-Embodiment", url: "https://robotics-transformer-x.github.io/", role: "跨本体数据" }, { title: "OpenVLA", url: "https://openvla.github.io/", role: "开源" }, { title: "π₀.₅", url: "https://www.pi.website/blog/pi05", role: "开放世界" }], visual: "history",
+    sources: [{ title: "ACT", url: "https://arxiv.org/abs/2304.13705", role: "动作块与 temporal ensemble" }, { title: "Diffusion Policy", url: "https://arxiv.org/abs/2303.04137", role: "连续多峰动作基础" }, { title: "RT-1", url: "https://arxiv.org/abs/2212.06817", role: "语言条件多任务机器人 Transformer" }, { title: "RT-2", url: "https://proceedings.mlr.press/v229/zitkovich23a.html", role: "VLM co-fine-tuning 与动作 token" }, { title: "Open X-Embodiment", url: "https://robotics-transformer-x.github.io/", role: "跨本体数据" }, { title: "Octo", url: "https://arxiv.org/abs/2405.12213", role: "通用策略与 action chunk" }, { title: "OpenVLA", url: "https://openvla.github.io/", role: "开源" }, { title: "π₀.₅", url: "https://www.pi.website/blog/pi05", role: "开放世界" }], visual: "history",
   },
 
   "behavior-cloning": {
@@ -223,7 +225,7 @@ export const lessonContent: Record<string, LessonDetail> = {
       { duration: "3:30–4:00", title: "多峰动作与验收", activity: "观察同一状态下左右绕障动作被 MSE 平均成直行；为任务选择离散、混合密度或生成式动作头。", deliverable: "完成章末 5 问，并通过脚本全部断言。" },
     ],
     theory: [
-      "一条演示 episode 可写成 τ={(oₜ,ℓ,aₜ)}ₜ₌₀ᵀ⁻¹。单步策略用 xₜ=(oₜ,ℓ) 预测 aₜ；动作块策略则用当前及过去观测预测 Aₜ=[aₜ,…,aₜ₊H₋₁]。图像、状态和动作必须共享同一物理时间语义：相机若在 t 时刻曝光，标签却取到 t+1 的动作，模型会学到系统延迟，而不是正确控制关系。训练/验证/测试必须按 episode 或场景拆分，不能随机拆 frame，否则相邻画面会泄漏。",
+      "一条演示 episode 可写成 τ={(oₜ,ℓ,aₜ)}ₜ₌₀ᵀ⁻¹。单步策略用 xₜ=(oₜ,ℓ) 预测 aₜ；动作块策略则用当前及过去观测预测 Aₜ=[aₜ,…,aₜ₊H₋₁]。图像、状态和动作必须共享明确的因果时间语义：标签应是由该观测可用后所决定、并在声明的执行时刻生效的命令。数据索引成 t→t+1 不一定错误——它可能恰好编码采集/控制延迟；错误在于没有记录曝光、状态采样、命令生成和执行时间，却仅凭数组下标猜对齐。训练/验证/测试必须按 episode 或场景拆分，不能随机拆 frame，否则相邻画面会泄漏。",
       "BC 把专家动作当标签，最大化 πθ(a|o,ℓ) 的条件似然。若策略输出连续均值 μθ，且假设 a|o,ℓ 服从固定方差、单峰高斯，最小化 NLL 才等价于 MSE；预测关节增量时还要先处理量纲差异和 valid mask。若把每个动作维量化为类别，则训练是交叉熵，但会引入量化误差和类别不平衡。",
       "监督学习指标只回答“在专家访问过的状态上能否复现专家动作”。闭环时，模型的小误差会把机器人带到专家数据没有覆盖的状态；下一步又在分布外预测，误差可能随时间累积。这就是 covariate shift。因而 validation loss 降低不等于 rollout 成功率提高，开环动作 MSE 也不能代替闭环任务评测。",
       "DAgger 的核心不是普通数据增强，而是让当前策略参与采样：用当前或混合策略 rollout，专家在这些实际访问状态上给出正确动作，把新样本聚合回数据集后再训练。实际机器人上常用安全员接管、纠错片段和恢复示范近似这一过程；每轮都应限制工作空间、速度和动作 TTL。",
@@ -371,7 +373,7 @@ export const lessonContent: Record<string, LessonDetail> = {
     ],
     theory: [
       "先区分物理时间与 token 位置。以 B 个样本、K 帧历史、C 路相机为例，原始图像可写成 [B,K,C,3,Hᵢ,Wᵢ]；视觉编码器把每张图变成 P 个 patch token，得到 [B,K·C·P,d]。语言得到 [B,L,d]，本体状态经 MLP/projector 得到一个或多个 [B,S,d] token。它们必须投影到共同隐藏维 d 才能进入同一 Transformer，但共享宽度不等于共享语义。",
-      "每个 token 至少需要内容、序列位置和模态身份；多相机系统还需要稳定的 camera identity。若把 wrist/base 相机顺序交换却不更新身份，模型看到的不是普通数据增强，而是接口协议变化。物理时间也不能只靠序列下标猜测：不同相机曝光延迟、状态采样和动作标签要在数据层先对齐。",
+      "系统必须让模型稳定区分 token 的内容、序列位置与来源，但不一定非要增加一张显式 modality embedding：独立 projector、固定序列区间、分支结构或 cross-attention 也能编码来源。多相机仍需要稳定的 camera identity；若把 wrist/base 相机顺序交换却不更新协议，模型看到的不是普通数据增强。物理时间也不能只靠序列下标猜测：不同相机曝光延迟、状态采样和动作标签要在数据层先对齐。",
       "单头注意力先用可学习矩阵得到 Q=XWQ、K=XWK、V=XWV。QKᵀ 的 shape 为 [B,Nq,Nk]；除以 √dₖ 是为了在维度增大时控制点积尺度，避免 softmax 过早饱和。mask M 加在 softmax 之前：允许位置加 0，禁止位置加负无穷，因此禁止位置的概率应数值上接近 0。多头注意力只是并行使用多组投影，再拼接回隐藏维。",
       "Mask 是训练协议。自回归动作 token 的第 i 个位置只能读条件 prefix 与更早动作 token，不能读取未来 clean label；prefix 内部可双向通信。π₀ 一类连续 action suffix 可以在 action slots 之间双向通信，因为输入 suffix 是带噪动作/潜变量而不是未来干净标签，训练目标是联合去噪或速度预测。若把 clean future actions 直接放入双向 suffix，仍然是泄漏。",
       "VLM 为 VLA 提供视觉语义与语言先验，但不会自动得到毫米级控制。常见接口包括 projector＋离散动作词表、连续 action head，以及带独立宽度/参数的 action expert。冻结 backbone 能节约训练量并保护语义，部分或全量微调能增强动作域适配但更吃显存，也可能遗忘；哪种更好必须由同数据、同 rollout 协议验证。",
@@ -562,7 +564,7 @@ export const lessonContent: Record<string, LessonDetail> = {
       {
         title: "5. 从一维 denoiser 升到机器人动作块【工程推演】",
         paragraphs: [
-          "脚本把 clean data 设为靠近 −2/+2 的一维双峰，用 MLP 接收 noisy action 和 time features，手写 Adam 训练 ε；采样从 N(0,1) 反向走 24 步。它验证了真正的训练与采样闭环，而不只是画预设双峰。",
+          "脚本把 clean data 设为靠近 −2/+2 的一维双峰，用 MLP 接收 noisy action 和 time features，手写 Adam 训练 ε；50 步 schedule 令终端 ᾱ_T<0.01，再从 N(0,1) 近似初始化反向采样。它验证的是该 Toy 的近似训练—采样闭环；有限步 q(x_T) 仍不与标准高斯严格相等。",
           "升级到动作块时，把标量换成 [H,dₐ]，denoiser 换成能处理时间结构的网络，并注入视觉/语言/本体条件。随后还要选择 E、测 p99 采样延迟、丢弃过期 chunk，并与相同数据和执行协议的 MSE/ACT baseline 比较成功率。",
         ],
         takeaways: ["先在最小维度验证 schedule 与采样，再扩模型。", "报告模式计数不能代替任务成功率。", "生成模型与安全执行层是两个系统。"],
@@ -574,9 +576,9 @@ export const lessonContent: Record<string, LessonDetail> = {
     ], note: "该式是 ε-prediction 训练目标。若实现预测 x₀、v 或 score，反向采样公式必须相应改变；也不能省略动作 valid mask 与归一化。" },
     practice: {
       title: "真正训练并采样的一维双峰 DDPM",
-      summary: "纯 Python 手写 MLP、Adam、前向加噪与 24 步反向采样；比较 MSE 条件均值和 400 个生成样本。",
+      summary: "纯 Python 手写 MLP、Adam、前向加噪与 50 步反向采样；先检查终端 ᾱ_T，再比较 MSE 条件均值和 400 个生成样本。",
       steps: ["运行默认脚本，记录四个训练 loss checkpoint", "确认单峰 MSE baseline 接近两个专家模式的均值 0", "读取 q10/q50/q90 与 negative/central/positive 计数", "把 iterations 降到 100 或删除 time features，观察模式质量下降", "故意翻转反向均值中的符号，让 finite/模式断言捕获错误", "恢复脚本并写清 toy 结果不能外推到真实机器人"],
-      acceptance: ["脚本输出 PASS", "负、正模式各占至少 20%", "中心 |a|<0.6 的样本少于 30%", "全部采样 finite 且固定 seed 可复现", "能说明这不是图像条件动作块或机器人 rollout"],
+      acceptance: ["脚本输出 PASS", "终端 ᾱ_T<0.01，并明确 N(0,1) 仍是有限步近似", "负、正模式各占至少 20%", "中心 |a|<0.6 的样本少于 30%", "全部采样 finite 且固定 seed 可复现", "能说明这不是图像条件动作块或机器人 rollout"],
       status: "已验证",
       code: "python public/labs/diffusion_multimodal_1d.py",
       prerequisites: ["Python 3.10+ 标准库；无需 NumPy、PyTorch 或 GPU", "已完成 BC 多峰均值例子", "能区分 clean action、noisy action、target noise 和 diffusion step"],
@@ -629,10 +631,10 @@ export const lessonContent: Record<string, LessonDetail> = {
       { duration: "选做 2:25–3:30", title: "server/client + LIBERO", activity: "启动 policy server，多 seed rollout；算力允许再微调。", deliverable: "成功率、样本数、失败分类；至此选做完成。" },
     ],
     theory: ["π₀ 用 VLM prefix + flow action expert 生成连续动作。π₀.₅ 的显式层级推理先输出文字子任务，如‘拿起枕头’，再据此生成 50 步、约 1 秒低层动作；离散语义路径和连续动作路径共享模型。", "训练机制同样关键：原始 π₀.₅ 先利用 FAST 动作 token、跨本体机器人数据、视觉语言与高层语义任务建立表示，再在任务相关移动操作数据上用 flow matching 学连续动作并学习 semantic action。后续 Knowledge Insulation 进一步联合 FAST 离散目标与连续 flow 目标，并阻断 action expert 梯度对 VLM backbone 的干扰。", "这种 co-training 尽量保留互联网语义知识，但开放世界实验强调新环境泛化，不等于任意新机器人零样本可用。当前 openpi 公开实现只支持 π₀.₅ 的 flow-matching head，不能声称完整复现论文的高层语义路径与完整训练配方。"],
-    formula: { latex: String.raw`p_\theta(\mathbf A_t,\hat\ell_t\mid\mathbf o_t,\ell)=p_\theta(\hat\ell_t\mid\mathbf o_t,\ell)\;p_\theta(\mathbf A_t\mid\mathbf o_t,\ell,\hat\ell_t)`, symbols: [
+    formula: { latex: String.raw`p_\theta(\mathbf A_t,\hat\ell_t\mid\mathbf o_t,\ell)=p_\theta(\hat\ell_t\mid\mathbf o_t,\ell)\;p_\theta(\mathbf A_t\mid\mathbf o_t,\hat\ell_t)`, symbols: [
       { symbol: "ℓ", meaning: "用户整体任务，如‘整理卧室’。" }, { symbol: "ℓ̂ₜ", meaning: "模型在时刻 t 生成的文字子任务，如‘拿起枕头’。" }, { symbol: "oₜ", meaning: "当前多相机观测与本体状态。" },
-      { symbol: "Aₜ", meaning: "低层连续动作块；π₀.₅ 论文所述移动操作系统采用 50 步/约 1 秒，公开配置可能不同。" }, { symbol: "pθ(ℓ̂ₜ|·)", meaning: "离散自回归高层语义策略。" }, { symbol: "pθ(Aₜ|·)", meaning: "同时以原任务和当前子任务为条件的 flow action policy。" }, { symbol: "θ", meaning: "共享模型参数；高低层不是 GPT 外接另一个 policy。" },
-    ], note: "这是一般链式分解，不是完整训练目标。若某个具体实现只用子任务替换原 prompt，还需额外声明 A 与原任务在给定观测和子任务后的条件独立假设。π₀.₅ 仍不是世界模型：它没有必须预测执行候选动作后的未来状态。" },
+      { symbol: "Aₜ", meaning: "低层连续动作块；π₀.₅ 论文所述移动操作系统采用 50 步/约 1 秒，公开配置可能不同。" }, { symbol: "pθ(ℓ̂ₜ|·)", meaning: "离散自回归高层语义策略。" }, { symbol: "pθ(Aₜ|·)", meaning: "按 π₀.₅ 论文分解，以观测和 semantic action 为条件的低层 flow policy。" }, { symbol: "θ", meaning: "共享模型参数；高低层不是 GPT 外接另一个 policy。" },
+    ], note: "这是 π₀.₅ 论文采用的分解：给定 o 与 ℓ̂ 后，低层动作项不再显式条件于原任务 ℓ。一般链式法则当然也允许写 p(A|o,ℓ,ℓ̂)，但那是更一般的另一种建模选择，不能反过来归因给论文。π₀.₅ 仍不是世界模型：它没有必须预测执行候选动作后的未来状态。" },
     deepDive: [
       { title: "证据边界", paragraphs: ["【官方可核对】π₀.₅ 项目页/论文报告开放世界任务、层级 semantic action 与连续动作；openpi 仓库公开 checkpoint、配置和 policy server 能力。具体版本以固定 revision README 为准。", "【合理推测】层级文字可能帮助长任务调试与语义泛化，但不能仅凭可读文字证明低层动作因果上依赖该子任务。", "【个人观点】2.5h核心+3.5h选做的分轨是教学设计；先读证据边界再租 GPU 更划算。", "【暂无法验证】本站当前没有替你运行 openpi checkpoint、LIBERO rollout 或微调，因此成功率、显存、速度和你的硬件兼容性均未复现；官方报告不等于本站本地验证。"] },
       { title: "π₀、π₀-FAST 与 π₀.₅ 不要混成一个名字", paragraphs: ["π₀ 的核心是预训练 VLM prefix 配合 flow-matching action expert 生成连续 action chunk。FAST 是动作 tokenization/压缩路线，可用于把机器人动作纳入离散自回归训练。π₀.₅ 利用更广的数据与高层 semantic action，目标是开放世界泛化。", "公开 openpi 的可运行配置不一定覆盖论文完整训练配方与所有高层语义路径。复现报告必须写清 checkpoint/config/revision，而不能只写“跑了 π₀.₅”。"], takeaways: ["模型名、论文能力、公开 checkpoint 能力分三列。", "环境泛化不等于新 embodiment 零样本。"] },
@@ -802,8 +804,8 @@ export const lessonContent: Record<string, LessonDetail> = {
   },
 
   "world-models": {
-    lead: "VLA policy 回答“现在做哪个动作”，dynamics 回答“执行后状态如何变化”，reward 判断“一步有多好”，value 估计“从这里往后有多好”。把四者混叫 world model 会让训练目标和评测都失焦。本章用 5 小时建立边界，并实现只在 VLA 有限候选集内重排的最小闭环；时长是个人建议。",
-    objectives: ["区分 policy、dynamics/world model、reward、value 的输入、输出和监督信号。", "解释 one-step loss 为何不能保证长 imagined rollout，定位 model bias 累积。", "用 ensemble disagreement 表达 epistemic uncertainty，并说明它不是安全证明。", "画出 VLA 与世界模型的五种组合方式及各自接口。", "在有限 VLA 候选集内做模型重排，复现不受约束优化如何利用 OOD 模型漏洞。"],
+    lead: "VLA policy 回答“现在做哪个动作”，transition/dynamics 回答“执行后状态如何变化”，reward 判断“一步有多好”，value 估计“从这里往后有多好”。广义 world model 往往还包含 encoder、observation/reward/continue 等预测头，不能与单一 transition 项画等号；反过来，把 policy、reward、value 全部不加区分地混叫 world model 也会让训练目标失焦。本章用 5 小时建立边界，并实现只在 VLA 有限候选集内重排的最小闭环；时长是个人建议。",
+    objectives: ["区分 policy、transition/dynamics、广义 world model、reward、value 的输入、输出和监督信号。", "解释 one-step loss 为何不能保证长 imagined rollout，定位 model bias 累积。", "用 ensemble disagreement 表达 epistemic uncertainty，并说明它不是安全证明。", "画出 VLA 与世界模型的五种组合方式及各自接口。", "在有限 VLA 候选集内做模型重排，复现不受约束优化如何利用 OOD 模型漏洞。"],
     timePlan: [
       { duration: "0:00–0:45", title: "四类函数边界", activity: "为 policy/dynamics/reward/value 分别写输入、输出、标签和用途。", deliverable: "四列表格。" },
       { duration: "0:45–1:35", title: "世界模型训练", activity: "比较像素、latent、state 与 reward prediction；区分 teacher-forced one-step 和 free rollout。", deliverable: "训练/推理计算图。" },
@@ -812,7 +814,7 @@ export const lessonContent: Record<string, LessonDetail> = {
       { duration: "3:10–4:20", title: "候选重排 Toy", activity: "运行有限候选重排，再开放任意动作搜索，观察 OOD optimizer exploitation。", deliverable: "完整输出与失败解释。" },
       { duration: "4:20–5:00", title: "项目设计验收", activity: "为自己的任务定义 candidate source、cost、uncertainty、fallback 和真实 rollout 评测。", deliverable: "一页实验协议。" },
     ],
-    theory: ["策略 πθ(A|o,ℓ) 输出动作分布；dynamics/world model pφ(zₜ₊₁|zₜ,aₜ) 预测动作条件的未来；reward r(z,a,ℓ) 是一步标量反馈；value V(z,ℓ) 是在某策略或最优假设下的未来累计回报估计。reward/value 可以和 dynamics 共用 backbone，但语义不相同。π₀.₅ 的文字子任务若不预测动作条件的未来，也不能单凭层级输出叫 world model。", "训练 one-step dynamics 时输入真实 zₜ，预测 zₜ₊₁；规划时模型反复吃自己的预测，输入分布逐步偏离训练数据。微小偏差会随 horizon 传播，这就是 model bias。必须同时报告 one-step 与 multi-step/free-rollout error，并按 horizon、场景和动作幅度分层。", "不确定性可用多个独立/bootstrapped 模型的预测分歧近似；分歧高常提示数据稀疏或模型不一致，但所有模型也可能一致地错。可用 uncertainty penalty、拒绝、缩短 horizon 或回到 VLA/安全控制器；不能把低方差当安全认证。", "本教程建议先评估一种较保守的组合：让 VLA 生成有限、接近数据分布的候选 chunks，再由 world model 预测并按目标 cost 重排。它仍不提供安全保证。若直接对模型输入做无约束梯度/网格优化，优化器可能寻找模型误差较大的 OOD 区域，从而得到“预测完美、真实灾难”的动作。", "五种组合从松到紧是：① world prediction 作为辅助训练/表示学习，部署仍只用 policy；② VLA proposer + world evaluator 在有限候选内重排；③ 受约束 MPC 在模型中优化低层动作；④ world model/规划器选高层子目标，VLA 执行技能；⑤ 共享 backbone 或统一序列模型联合预测未来、reward/value 与动作。越紧耦合，训练和接口审计越复杂。"],
+    theory: ["策略 πθ(A|o,ℓ) 输出动作分布；transition/dynamics pφ(zₜ₊₁|zₜ,aₜ) 是 world model 的核心组成之一。Dreamer 一类广义 world model 还可包含 observation encoder/decoder、reward 与 continue predictor；actor/critic 又是独立优化对象。共享 backbone 不等于这些对象语义相同。π₀.₅ 的文字子任务若不预测动作条件的未来，也不能单凭层级输出叫 world model。", "训练 one-step dynamics 时输入真实 zₜ，预测 zₜ₊₁；规划时模型反复吃自己的预测，输入分布逐步偏离训练数据。微小偏差会随 horizon 传播，这就是 model bias。必须同时报告 one-step 与 multi-step/free-rollout error，并按 horizon、场景和动作幅度分层。", "不确定性可用多个独立/bootstrapped 模型的预测分歧近似；分歧高常提示数据稀疏或模型不一致，但所有模型也可能一致地错。可用 uncertainty penalty、拒绝、缩短 horizon 或回到 VLA/安全控制器；不能把低方差当安全认证。", "本教程建议先评估一种较保守的组合：让 VLA 生成有限、接近数据分布的候选 chunks，再由 world model 预测并按目标 cost 重排。它仍不提供安全保证。若直接对模型输入做无约束梯度/网格优化，优化器可能寻找模型误差较大的 OOD 区域，从而得到“预测完美、真实灾难”的动作。", "五种组合从松到紧是：① world prediction 作为辅助训练/表示学习，部署仍只用 policy；② VLA proposer + world evaluator 在有限候选内重排；③ 受约束 MPC 在模型中优化低层动作；④ world model/规划器选高层子目标，VLA 执行技能；⑤ 共享 backbone 或统一序列模型联合预测未来、reward/value 与动作。越紧耦合，训练和接口审计越复杂。"],
     deepDive: [
       { title: "证据边界", paragraphs: ["【已确认】policy/dynamics/reward/value 的数学定义、model-based planning 和 imagined rollout 可由控制/RL 文献核对。有限候选公式明确限制搜索域。本地 Toy 已运行：候选(.2,.3,.5)的模型/真实终点均为1；无约束搜索找到约1.81的重复动作，模型预测1、真实终点5.418，ensemble variance约0.520。", "【合理推测】在真实 VLA 系统中，候选集限制通常比任意动作优化更不易离开策略数据分布，但候选本身仍可能 OOD。", "【个人观点】5 小时节奏、先做 evaluator 再尝试 MPC，以及默认用不确定性触发回退，是教学/工程建议。", "【暂无法验证】Toy 的 world model 是手工构造而非训练；本站未在你的数据上验证世界模型精度、重排增益或安全性，不能外推数值。"] },
       { title: "四类对象的最小契约", paragraphs: ["Policy: (o,ℓ)→distribution over A，标签通常来自动作演示或回报优化。Dynamics: (z,A)→future z/observation distribution，标签来自时间相邻数据。Reward: (z,a,ℓ)→scalar immediate preference，来源可能是人工定义、环境或学习。Value: (z,ℓ)→expected discounted return，依赖策略和 horizon。", "“视频看起来合理”只检查 observation prediction，不等于 reward 正确；“value 高”也不告诉你未来具体发生什么。规划时必须写清 cost 到底由预测状态、reward model 还是 value head提供。"], takeaways: ["先写函数签名，再说模型名。", "value 必须注明对应策略/horizon。", "reward/value error 与 dynamics error 分开评测。"] },
@@ -826,7 +828,7 @@ export const lessonContent: Record<string, LessonDetail> = {
     practice: { title: "有限 VLA 候选重排 + OOD exploitation", summary: "零依赖脚本用手工 world-model ensemble 评估四个 VLA 候选，并对照不受约束搜索如何找到模型漏洞；同时显式打印 reward 与 value。", prerequisites: ["Python 3.10+，无需第三方库。", "先写出 policy/dynamics/reward/value 四个函数签名，并手算四个候选真实终点。"], steps: ["运行 python public/labs/world_model_reranking.py，保存候选排序与 exploit 输出。", "阅读 true_rollout、ensemble_rollout、task_cost，分别标注 dynamics、uncertainty 和 reward/cost；指出脚本没有训练 policy。", "把 uncertainty_weight 从2改为0，再加入一个 |a|>.6 的候选，观察排名和方差。", "把 horizon 从3增加到10并给 learned_step 加每步偏差，画 predicted-vs-true error。", "把有限候选限制删掉，解释 a≈1.81 为什么在模型中好、真实中坏；不要把它称为 adversarial attack。", "为真实项目设计 candidate oracle：在同一候选集中用真实仿真/环境事后选最佳，估计重排器的可提升上限。"], expected: ["【本地已确认】有限候选选(.2,.3,.5)，预测/真实终点均为1，uncertainty=0。", "无约束 exploit 重复动作约1.81，模型/真实终点约1/5.418，ensemble variance约0.520。", "脚本打印逐步 reward、terminal reward、value estimate 与 ALL CHECKS PASSED。"], acceptance: ["能准确区分四类函数及训练标签。", "报告 one-step 与 multi-step error，不用前者替代后者。", "argmin 明确限制在 VLA 候选集 Cθ(o,ℓ)，并有 uncertainty/OOD fallback。", "能解释 Toy 是手工模型演示，未证明真实重排收益。"], debugging: ["重排总选静止：检查 action penalty 与 goal cost 尺度，先打印每个分项。", "模型预测好但真实差：按 action magnitude/horizon 查 OOD 和 model bias，比较 ensemble 分歧。", "ensemble 方差低仍失败：模型可能共享数据偏差而一致地错；低方差不是正确性证明。", "候选都很差：evaluator 无法创造新动作，先测 proposer 的 candidate oracle 上限。", "优化器给出极端动作：限制候选/action prior/物理边界，并用真实 rollout 审计；不要只加 clip 后宣布解决。"], status: "已验证", code: "python public/labs/world_model_reranking.py" },
     pitfalls: ["视频生成器都叫控制 world model", "π₀.₅ 文字子任务=未来预测", "只看像素质量", "模型自生成数据自证"],
     review: ["policy、dynamics、reward、value 的函数签名和标签分别是什么？", "one-step MSE 为什么不能保证 imagined rollout？", "五种 VLA+world model 组合方式分别是什么？", "为什么 ensemble 低方差仍可能全错？", "为何候选集内重排比任意动作优化更不易出现 OOD exploitation？"], completion: "不看答案画出五种组合，运行候选重排与 OOD 对照；为项目提交含 candidate oracle、multi-step error、uncertainty 与真实 fallback 的实验协议。",
-    sources: [{ title: "World Models", url: "https://arxiv.org/abs/1803.10122", role: "概念" }, { title: "DreamerV3", url: "https://arxiv.org/abs/2301.04104", role: "imagined rollout" }, { title: "π₀.₅", url: "https://www.pi.website/blog/pi05", role: "层级对照" }], visual: "world",
+    sources: [{ title: "World Models", url: "https://arxiv.org/abs/1803.10122", role: "概念" }, { title: "DreamerV3", url: "https://arxiv.org/abs/2301.04104", role: "广义 world model 与 imagined rollout" }, { title: "PETS", url: "https://arxiv.org/abs/1805.12114", role: "ensemble dynamics 与不确定性" }, { title: "MOPO", url: "https://arxiv.org/abs/2005.13239", role: "模型利用与分布外惩罚" }, { title: "π₀.₅", url: "https://www.pi.website/blog/pi05", role: "层级对照" }], visual: "world",
   },
 
   "frontier-and-deployment": {
@@ -834,7 +836,7 @@ export const lessonContent: Record<string, LessonDetail> = {
     objectives: [
       "完成部署必修：把 VLA 拆成策略服务、版本化协议、客户端安全层和低层控制闭环。",
       "用足量延迟样本估计 p99，并把推理、网络和余量换算成动作队列 reserve。",
-      "区分消息 TTL、watchdog、旧响应拒绝、controlled stop 与硬件急停。",
+      "区分消息 TTL、watchdog、旧响应拒绝、controlled stop 与独立 emergency-stop function。",
       "运行故障注入：schema 错配、乱序、过期前缀、极端动作、TTL 和心跳中断。",
       "完成前沿选修：按‘旧问题—改动—证据—代价/缺陷’评估 OFT、FAST、RTC、3D/触觉、人类视频/仿真与规划。",
     ],
@@ -853,15 +855,15 @@ export const lessonContent: Record<string, LessonDetail> = {
     theory: [
       "本章分成两条轨道：前 5 小时部署必修，后 2 小时前沿索引选修。部署的目标是让一个不稳定、非实时的 GPU 策略服务安全地接入确定性机器人控制栈；前沿部分只建立问题地图，不要求复现所有大模型。两者放在一章是因为任何论文增益最终都要经过同一接口、延迟和安全门禁。",
       "策略服务应被视为不受信任的动作 proposer，而不是机器人驱动。Server 负责固定模型/统计 revision、输入预处理和生成 action chunk；Client 负责协议验证、时间语义、跳过过期前缀、反归一化、frame 变换、限幅、轨迹与 fallback；高频 servo 和硬件保护独立运行。Server 崩溃或输出 NaN 时，机器人不能依靠同一 server 自救。",
-      "Schema 必须版本化并可拒绝。请求要携带 request_id、observation_time、camera/joint 顺序、指令、期望 horizon、checkpoint/norm revision；响应要回传对应请求、command_type、frame/unit、rotation、action_dt、actions、valid mask 和生成时间。客户端先验证 schema/shape/finite/time，再做几何与安全检查；未知字段可否忽略、必填字段如何升级要在 v1 就定义。",
-      "实时性用分布而不是均值描述。分别测模型推理、server queue、序列化、网络往返和 client processing，在代表性冷/热机、batch 与负载下报告 p50/p95/p99。异步 action queue 的剩余动作必须覆盖 p99 总延迟与余量；响应到达后按 observation_time/action_dt 跳过已经属于过去的前缀，不能从 index 0 重放。",
-      "TTL 和 watchdog 解决不同问题：TTL 判断某个 chunk 是否太旧，watchdog 判断系统是否太久没有有效消息。协议拒绝、队列耗尽、碰撞预测、关节/工作空间越界、通信中断应进入明确状态机。Controlled stop 不是硬件 E-stop，更不是安全认证；具体保持、减速、制动或卸力策略取决于机器人和风险分析。",
+      "Schema 必须版本化并可拒绝。请求要携带 request_id、observation_time、clock_id、camera/joint 顺序、指令、期望 horizon、checkpoint/norm revision；响应要回传 based_on_observation_time，并给 action_start_time、command_type、frame/unit、rotation、action_dt、actions、valid mask、model/norm/action-contract revision 和生成时间。客户端先验证 schema/shape/finite/time，再做几何与安全检查；未知字段可否忽略、必填字段如何升级要在 v1 就定义。",
+      "实时性用分布而不是均值描述。分别测模型推理、server queue、序列化、网络往返和 client processing，在代表性冷/热机、batch 与负载下报告 p50/p95/p99；生产 reserve 优先使用同一请求边界的 end-to-end p99。异步 action queue 还必须满足 H−E≥R，其中 R 是延迟预算对应的动作数。响应到达后按 action_start_time/action_dt 跳过已经属于过去的排程，observation_time 只负责新鲜度，不能从 index 0 重放。",
+      "TTL 和 watchdog 解决不同问题：TTL 判断某个 chunk 所依据的观测是否太旧，watchdog 判断系统是否太久没有有效消息。协议拒绝、队列耗尽、碰撞预测、关节/工作空间越界、通信中断应进入明确状态机。Controlled stop 不等于独立、满足目标风险要求的 emergency-stop function，更不等于安全认证；具体保持、减速、制动或卸力策略取决于机器人和风险分析。",
     ],
     deepDive: [
       {
         title: "证据边界：本地 PASS 不等于机器人安全",
         paragraphs: [
-          "【已确认】p99 reserve 公式、最近秩分位数、TTL/乱序/finite/schema 检查都可由本章定义核对。新脚本已实际运行：默认得到 inference p99=190ms、network p99=55ms、reserve=6，并触发 schema mismatch、stale request、skip=2、±0.05 clip、watchdog 与 TTL stop。",
+          "【已确认】端到端 p99 reserve、最近秩分位数、H−E≥R、TTL/乱序/finite/schema 检查都可由本章定义核对。脚本默认得到 end-to-end p99=270ms、margin=30ms、reserve=6；分项 190+55+30ms 在该组数字中也恰好向上取整为 6，但只标为 heuristic。脚本还验证 H=16、E=4 可行而 H=5 不可行，并触发 skip=2、clip、schema/乱序、watchdog 与 TTL。",
           "【合理推测】真实远程 VLA 服务会遇到相同类别的版本、抖动、丢包和过期问题；但延迟分布、阈值与 fallback 必须在目标硬件和网络上重新测量。",
           "【个人观点】把部署设为 5 小时必修、前沿设为 2 小时选修，是为了先建立可运行系统，再追论文；这不是统一课程标准。",
           "【暂无法验证】脚本没有真实网络、时钟同步、机器人动力学、IK、碰撞或安全 PLC，也没有任何安全等级认证。它只能验证客户端控制流，不能证明设备可安全上电。",
@@ -878,7 +880,7 @@ export const lessonContent: Record<string, LessonDetail> = {
       {
         title: "部署必修 2. 一个最小 response contract【工程建议】",
         paragraphs: [
-          "建议字段包括 schema_version、request_id、observation_time、model_revision、normalization_revision、command_type、frame、linear/angular unit、rotation convention、action_dt、actions:[H,dₐ]、valid:[H,dₐ] 和 server_created_time。二值 gripper、连续位姿与模式切换不应在无语义标记时混成同一浮点向量。",
+          "建议字段包括 schema_version、request_id、based_on_observation_time、clock_id、action_start_time、model_revision、normalization_revision、action_contract_revision、command_type、frame、linear/angular unit、rotation convention、action_dt、actions:[H,dₐ]、valid:[H,dₐ] 和 server_created_time。二值 gripper、连续位姿与模式切换不应在无语义标记时混成同一浮点向量。",
           "验证顺序可固定为：版本→字段/shape→finite→request_id/时间→model/norm revision→frame/unit→反归一化→逐步 delta/速度/加速度→工作空间/自碰/环境碰撞。拒绝原因要机器可读，且任何失败都映射到状态机，不允许默默沿用未知旧命令。",
         ],
         takeaways: ["schema 变更需要兼容策略和测试。", "frame/unit 错比小数误差更危险。", "未知 revision 默认拒绝而不是猜。"],
@@ -886,7 +888,7 @@ export const lessonContent: Record<string, LessonDetail> = {
       {
         title: "部署必修 3. p99 数值例与队列语义【必须手算】",
         paragraphs: [
-          "脚本的 10 个推理样本最近秩 p99 是 190ms，10 个网络样本 p99 是 55ms，加 30ms margin、动作周期 50ms，reserve=ceil((190+55+30)/50)=6。若队列剩余少于 6 个动作才发请求，已经来不及；应在达到阈值时触发，并考虑 server 排队、序列化和 client 处理是否已计入。",
+          "脚本直接测得的 10 个 end-to-end 样本最近秩 p99 是 270ms，加 30ms margin、动作周期 50ms，R=ceil(300/50)=6。另把推理 p99=190ms、网络 p99=55ms 与 margin 相加也得到 6，但这只是可能高估也可能低估真实尾部的预算启发式，不是统计恒等式。H=16、执行 E=4 时 H−E=12≥6，异步方案可行；旧脚本的 H=5、R=6 则不可能。",
           "10 个样本不足以可靠估计真实 p99，这组数字只验证计算机制。生产测量要覆盖 warmup、温控降频、并发、不同图像大小、网络抖动与长时间运行；同时报告样本数和测量边界。平均 40ms 不能否定偶发 300ms 下溢。",
         ],
         takeaways: ["reserve 向上取整。", "p99 的可信度依赖样本量和场景覆盖。", "到达后的旧前缀必须跳过。"],
@@ -894,8 +896,8 @@ export const lessonContent: Record<string, LessonDetail> = {
       {
         title: "部署必修 4. TTL、watchdog 与安全 sandwich【必须掌握】",
         paragraphs: [
-          "TTL 是消息级：now−observation_time 超阈值时整个 chunk 失效；即使未超过 TTL，也要按 action_dt 跳过过期前缀。Watchdog 是连接/系统级：距离最近一次有效消息太久即进入 fallback。乱序 request_id、未来时间戳和时钟跳变要分别记录，不能统称 timeout。",
-          "所谓安全 sandwich 是工程结构而非认证术语。模型前：schema、finite、frame/unit、归一化 revision；模型后执行前：限幅、速度/加速度、workspace、IK/轨迹和碰撞；运行中：关节/力/碰撞监控、heartbeat、人工接管和硬件急停。任何一层都不能因模型置信度高而绕过。",
+          "TTL 是消息级：now−based_on_observation_time 超阈值时整个 chunk 失效；即使未超过 TTL，也要按 action_start_time+i·action_dt 跳过已错过的动作。Watchdog 是连接/系统级：距离最近一次有效消息太久即进入 fallback。乱序 request_id、未来时间戳和时钟跳变要分别记录，不能统称 timeout。",
+          "所谓安全 sandwich 是工程结构而非认证术语。模型前：schema、finite、frame/unit、归一化 revision；模型后执行前：限幅、速度/加速度、workspace、IK/轨迹和碰撞；运行中：关节/力/碰撞监控、heartbeat、人工接管，以及独立且满足目标风险要求的 emergency-stop function（通常包含实体操作器与 safety-rated control path）。任何一层都不能因模型置信度高而绕过。",
         ],
         takeaways: ["TTL 与 watchdog 不能互相替代。", "controlled stop 与 E-stop 要分名。", "软件门禁不替代硬件保护。"],
       },
@@ -924,24 +926,23 @@ export const lessonContent: Record<string, LessonDetail> = {
         takeaways: ["前沿结论必须绑定任务和证据。", "更多模态也带来同步与标定故障。", "把未复现主张标成待验证。"],
       },
     ],
-    formula: { latex: String.raw`N_{\rm reserve}\ge\left\lceil\frac{L_{\rm infer,p99}+L_{\rm net,p99}+L_{\rm client,p99}+L_{\rm margin}}{\Delta t_c}\right\rceil`, symbols: [
-      { symbol: "Nreserve", meaning: "请求下一 chunk 时最少剩余动作。" }, { symbol: "Linfer,p99", meaning: "推理延迟 99 分位。" }, { symbol: "Lnet,p99", meaning: "网络延迟 99 分位。" }, { symbol: "Lmargin", meaning: "抖动/安全余量。" }, { symbol: "Δt_c", meaning: "动作周期。" }, { symbol: "⌈·⌉", meaning: "向上取整。" },
-      { symbol: "Lclient,p99", meaning: "客户端反序列化、验证、反归一化和安全处理的 99 分位延迟。" },
-    ], note: "分组件 p99 直接相加只是保守工程启发式，不是端到端 p99 的统计恒等式，也不提供联合尾部保证。应优先在同一请求边界实测 end-to-end latency p99；小样本估计仅适合机制演示。" },
+    formula: { latex: String.raw`R=\left\lceil\frac{L_{\rm e2e,p99}+M}{\Delta t_c}\right\rceil,\qquad H-E\ge R`, symbols: [
+      { symbol: "R", meaning: "请求下一 chunk 时需要由旧队列覆盖的动作数。" }, { symbol: "Le2e,p99", meaning: "从同一观测边界到动作可用的端到端延迟 99 分位。" }, { symbol: "M", meaning: "未计入尾延迟的工程余量；不是安全证明。" }, { symbol: "Δt_c", meaning: "动作周期。" }, { symbol: "H", meaning: "chunk 总动作数。" }, { symbol: "E", meaning: "发起下一次重规划前执行的动作数。" },
+    ], note: "优先直接测 end-to-end p99。分组件 p99 直接相加只是初始预算启发式，可能高估也可能低估端到端 p99；若要概率保证，必须显式分配各组件尾部风险。H−E≥R 同时保证旧队列覆盖请求延迟，并使返回 chunk 跳过 R 个过期前缀后仍至少有 E 个动作可用。" },
     practice: {
       title: "策略服务客户端故障注入",
-      summary: "纯 Python 模拟 versioned action chunk；计算 p99 reserve，跳过过期前缀，并触发 schema、乱序、clip、TTL 与 watchdog。",
-      steps: ["运行默认脚本并核对 reserve=6 的数值过程", "阅读 ACCEPT:7:skip=2，解释为何不能从 action 0 重放", "确认 ±0.20 被客户端限为 ±0.05", "确认 v2 schema 与旧 request_id 被拒绝但不会覆盖最近有效消息", "确认 121ms 无有效消息触发 watchdog，300ms 年龄触发 TTL", "新增 NaN 或 wrong-frame case，并为其写预期 REJECT 断言"],
-      acceptance: ["脚本输出 PASS", "p99 数值和 reserve 计算正确", "schema/乱序响应均被拒绝", "过期前缀不重放且极端动作被限幅", "watchdog 与 TTL 都进入 CONTROLLED_STOP", "能说明该脚本不是认证安全控制器"],
+      summary: "纯 Python 维护真实剩余动作队列；用 end-to-end p99 计算 reserve，断言 H−E≥R，按独立 action_start_time 跳过前缀，并触发 schema、乱序、clip、TTL 与 watchdog。",
+      steps: ["运行默认脚本并核对 end-to-end reserve=6 与 H=16,E=4 的可行性", "确认 H=5,E=4,R=6 被断言拒绝", "阅读 ACCEPT:7:skip=2:queued=14 与 EXEC，解释为何不能从 action 0 重放", "确认 ±0.20 被客户端限为 ±0.05", "确认 v2 schema 与旧 request_id 被拒绝但不会覆盖剩余队列", "确认 watchdog 与 TTL 清空队列并进入 controlled stop", "新增 NaN 或 wrong-frame case，并为其写预期 REJECT 断言"],
+      acceptance: ["脚本输出 PASS", "end-to-end p99、reserve 与 H−E≥R 计算正确", "组件 p99 之和明确标为 heuristic", "schema/乱序响应均被拒绝", "过期前缀不重放、剩余动作被排入队列且极端动作被限幅", "watchdog 与 TTL 都进入 CONTROLLED_STOP", "能说明该脚本不是认证安全控制器"],
       status: "已验证",
       code: "python public/labs/policy_service_fault_injection.py",
       prerequisites: ["Python 3.10+ 标准库，无需网络/GPU", "已理解 request_id、observation_time、action_dt、TTL 与 p99"],
-      expected: ["首行打印 inference=190ms、network=55ms、reserve=6", "事件日志依次含 ACCEPT skip=2、schema REJECT、stale REJECT、watchdog STOP、TTL STOP", "最后两行显示 PASS 与 BOUNDARY"],
-      debugging: ["若 skip 不是 2，检查 ceil((now−observation_time)/action_dt)", "若 stale response 被接受，检查 request_id 必须严格递增", "若 watchdog 未触发，确认比较的是最近有效消息而非任意到达包", "若 TTL 包仍执行，检查年龄基于 observation_time 而不是到达时间", "若 reserve 偏小，检查是否漏算 client 或 margin 并向上取整"],
+      expected: ["首行打印 end_to_end=270ms、measured_reserve=6，并把 190+55+30 标为 component_heuristic", "打印 H=16,E=4,H−E=12≥6", "事件日志含 ACCEPT skip=2 queued=14、EXEC、schema/stale REJECT、watchdog/TTL STOP", "最后两行显示 PASS 与 BOUNDARY"],
+      debugging: ["若 skip 不是 2，检查 ceil((now−action_start_time)/action_dt)", "若 queue 数量不对，检查 H−skip，而不是只返回一个动作", "若 stale response 被接受，检查 request_id 必须严格递增", "若 watchdog 未触发，确认比较的是最近有效消息而非任意到达包", "若 TTL 包仍执行，检查年龄基于 based_on_observation_time 而不是到达时间", "若 reserve 偏小，优先检查端到端测量边界与 margin"],
     },
-    pitfalls: ["用平均延迟决定队列", "response 到达时间冒充 observation_time", "smoothing 当成安全证明", "CBF 名称等同认证安全", "越界后沿用旧 chunk", "schema 不匹配仍猜测字段", "watchdog 与 TTL 混为一谈", "软件 controlled stop 冒充硬件急停"],
-    review: ["策略 server、robot client、safety/trajectory 与 servo 各自承担什么？", "190+55+30ms、50ms/action 为什么 reserve=6，而不是 5？", "TTL、watchdog、乱序拒绝和 E-stop 分别处理什么？", "RTC、temporal ensemble 和简单 chunk 平均的信息约束有何不同？", "FAST、OFT 与 RTC 分别修改表示、动作 head 还是 runtime？", "为什么本地故障脚本 PASS 仍不能声称机器人安全？"], completion: "完成 5 小时部署必修：实现 versioned schema、p99 reserve、过期前缀、TTL/watchdog、独立安全回退与可重放日志；再用 2 小时选修索引按证据边界阅读前沿。",
-    sources: [{ title: "OFT", url: "https://openvla-oft.github.io/", role: "完整 fine-tuning recipe" }, { title: "FAST", url: "https://www.pi.website/research/fast", role: "压缩" }, { title: "RTC", url: "https://www.pi.website/research/real_time_chunking", role: "实时" }, { title: "GR00T N1.7 Early Access · main@b995540", url: "https://github.com/NVIDIA/Isaac-GR00T/tree/b9955401d50c92a29258732e3ad6ccd579f1bdc0", role: "2026-08-08 动态研究索引" }], visual: "latency",
+    pitfalls: ["用平均延迟决定队列", "response 到达时间冒充 observation_time", "smoothing 当成安全证明", "CBF 名称等同认证安全", "越界后沿用旧 chunk", "schema 不匹配仍猜测字段", "watchdog 与 TTL 混为一谈", "软件 controlled stop 冒充独立 emergency-stop function"],
+    review: ["策略 server、robot client、safety/trajectory 与 servo 各自承担什么？", "端到端 270ms 加 30ms margin、50ms/action 为什么 R=6？组件 p99 相加为何只能叫 heuristic？", "TTL、watchdog、乱序拒绝和 emergency-stop function 分别处理什么？", "RTC、temporal ensemble 和简单 chunk 平均的信息约束有何不同？", "FAST、OFT 与 RTC 分别修改表示、动作 head 还是 runtime？", "为什么本地故障脚本 PASS 仍不能声称机器人安全？"], completion: "完成 5 小时部署必修：实现 versioned schema、p99 reserve、过期前缀、TTL/watchdog、独立安全回退与可重放日志；再用 2 小时选修索引按证据边界阅读前沿。",
+    sources: [{ title: "OFT", url: "https://openvla-oft.github.io/", role: "完整 fine-tuning recipe" }, { title: "FAST", url: "https://www.pi.website/research/fast", role: "压缩" }, { title: "RTC", url: "https://www.pi.website/research/real_time_chunking", role: "实时" }, { title: "GR00T N1.7 GA · main@b995540", url: "https://github.com/NVIDIA/Isaac-GR00T/tree/b9955401d50c92a29258732e3ad6ccd579f1bdc0", role: "2026-08-08 固定 GA 快照" }, { title: "ISO 13850", url: "https://www.iso.org/standard/59970.html", role: "emergency-stop function 术语与原则；具体适用范围需按目标设备判断" }], visual: "latency",
   },
 
   capstone: {
@@ -971,7 +972,7 @@ export const lessonContent: Record<string, LessonDetail> = {
       "最小仿真版建议选择语言指定目标并放入容器、抽屉或区域的任务；使用 LIBERO、Isaac Lab 或另一可重置环境均可。关键不是平台名字，而是能固定初始状态、seed、扰动、成功判据和动作接口。范围应控制在一台机器人、1–3 个任务和有限语言改写，避免同时研究跨本体、未知物体和长时规划。",
       "任务协议先于模型：明确观测相机、状态、语言有效区间、action dimension/type/frame/unit/Δt、chunk 与 execution horizon、控制器、安全过滤、最大步数和 reset。成功必须由环境状态或传感器规则判定，不由观看视频主观决定；超时、越界、碰撞、错误目标和人工接管都作为独立终止原因。",
       "项目至少包含 ACT 与一个 VLA。ACT 用于建立一个可审计的窄策略基线，并帮助定位两类模型共有的数据与执行接口问题；单次 ACT 成功不能证明一般意义上的可学习性。VLA 用于研究语言/视觉预训练与迁移。二者必须共享相同观测、动作、归一化、执行器与评测。",
-      "rollout 是主要证据。每次记录 seed、场景、语言、checkpoint、observation/action 时间、p50/p99 推理延迟、安全过滤、成功与终止原因。总体成功率必须附 N，并按任务、场景和扰动分层；小样本使用 Wilson 区间，跨组比较避免把所有非独立轨迹混成一个精确数字。",
+      "rollout 是主要证据。每次记录 seed、场景、语言、checkpoint、observation/action 时间、p50/p99 推理延迟、安全过滤、成功与终止原因。每个策略的边际成功率必须附 N，并按任务、场景和扰动分层；小样本可用 Wilson 区间。若 ACT 与 VLA 使用相同 seed/场景，这是 paired design：模型差异应保留逐对结果，用 paired bootstrap、McNemar 或配对比例差区间，不能靠两个边际 Wilson 区间是否重叠判断胜负。",
       "真机版不是仿真版的自动结论。sim-to-real 差异、标定、时延、材料接触、相机曝光和安全层都需要单独验证。默认低速、小工作空间、安全员在环；任何异常先停止执行并离线重放。没有实际真机日志时，只能报告‘未验证’，不能声称安全或有效。",
     ],
     deepDive: [
@@ -995,7 +996,7 @@ export const lessonContent: Record<string, LessonDetail> = {
       {
         title: "2. ACT baseline 与 VLA 的公平接口",
         paragraphs: [
-          "定义唯一 PolicyRequest：images、state、language、observation_time、request_id；唯一 PolicyResponse：action_chunk、action_dt、action_contract_revision、model_revision。ACT 与 VLA 通过相同 adapter 输出同一物理语义，安全层只读这一接口。",
+          "全课程使用同一 canonical interface。PolicyRequest 至少含 schema_version、request_id、observation_time、clock_id、images/state/language 与请求的 model/norm/action-contract revision；PolicyResponse 至少含 schema_version、request_id、based_on_observation_time、clock_id、action_start_time、command_type、frame/units/rotation、action_dt、actions、valid、server_created_time 及 model/normalization/action-contract revision。ACT 与 VLA 通过相同 adapter 输出同一物理语义，安全层只读这一接口。",
           "模型特有预处理在 adapter 内记录：图像 resize/crop、tokenizer、history、norm、action decode。评测器只看到统一物理动作。这样 ACT 成功/VLA 失败时，可以比较 adapter 前后的同一观测与动作，而不把下游控制差异混进模型比较。",
         ],
         takeaways: ["比较发生在统一物理动作接口。", "模型专用预处理必须版本化。", "安全过滤对所有模型完全相同。"],
@@ -1011,7 +1012,7 @@ export const lessonContent: Record<string, LessonDetail> = {
       {
         title: "4. 真机扩展：安全门禁而不是加一个视频",
         paragraphs: [
-          "真机前必须证明：急停和人工接管独立于模型；动作过期/乱序被拒；工作空间、速度、加速度、夹爪力和碰撞门限在模型之外；策略服务断开进入 controlled stop；原始观测与最终执行动作可重放。",
+          "真机前必须证明：独立、满足目标风险要求的 emergency-stop function 和人工接管不依赖模型；动作过期/乱序被拒；工作空间、速度、加速度、夹爪力和碰撞门限在模型之外；策略服务断开进入 controlled stop；原始观测与最终执行动作可重放。具体安全要求必须按目标设备类别和风险分析确定。",
           "灰度顺序为无负载空载→远离障碍的自由空间→单物体低速→有限扰动。每阶段设置 go/no-go 门禁。接管和 near-miss 不是应删除的失败 episode，而是数据与风险证据；是否将其用于训练需单独标注，不能混入测试集。",
         ],
         takeaways: ["真机安全来自独立系统，不来自模型置信度。", "接管数据和测试数据必须隔离。", "无实际日志就保持‘暂无法验证’。"],
@@ -1019,7 +1020,7 @@ export const lessonContent: Record<string, LessonDetail> = {
     ],
     formula: { latex: String.raw`\hat p=\frac1N\sum_{i=1}^{N}s_i,\qquad\operatorname{SE}(\hat p)=\sqrt{\frac{\hat p(1-\hat p)}N}`, symbols: [
       { symbol: "sᵢ", meaning: "第 i 次 rollout 成功为 1，否则 0。" }, { symbol: "N", meaning: "跨 seed/场景的独立 rollout 数。" }, { symbol: "p̂", meaning: "经验成功率。" }, { symbol: "SE", meaning: "二项近似标准误；N 小时用 Wilson 区间。" },
-    ], note: "二项标准误要求 rollout 可近似独立同分布；跨场景、任务和 seed 时还应分层报告，并用 Wilson 区间或分层 bootstrap 表达不确定性。不要只报告 5/5。" },
+    ], note: "二项标准误要求 rollout 可近似独立同分布；跨场景、任务和 seed 时还应分层报告，并用 Wilson 区间或分层 bootstrap 表达不确定性。该式描述单个策略的边际成功率；同 seed 的策略差异是配对问题，必须保留每对结果。不要只报告 5/5。" },
     practice: {
       title: "核心仿真交付 + 可选真机灰度",
       summary: "按 M0–M6 完成 25 小时核心版；只有全部安全门禁通过后才进入 R0–R3。下面是执行清单，不是已经验证的实验结果。",
@@ -1034,7 +1035,7 @@ export const lessonContent: Record<string, LessonDetail> = {
         "M1：运行数据审计与 20 条 replay，冻结 split/norm/action contract revision。",
         "M2：ACT 完成小样本过拟合、保存重载、held-out 与固定 rollout；保存每次原始/过滤后动作。",
         "M3：一个 VLA 完成官方 revision 锁定、smoke、小样本过拟合、保存重载和同接口 rollout。",
-        "M4：zero/mean、ACT、VLA 用相同 seed/扰动运行；报告总体与分层 N、成功率、Wilson 区间、延迟。",
+        "M4：zero/mean、ACT、VLA 用相同 seed/扰动运行；分别报告总体与分层 N、成功率、Wilson 区间和延迟；ACT−VLA 差异另用逐 seed 配对结果报告差值区间/paired bootstrap 或 McNemar。",
         "M5：完成语言、相机、动作表示或 execution horizon 中至少三项消融；每项一次只改一个变量。",
         "M6：从干净环境恢复并执行 smoke/eval；生成数据卡、模型卡、失败树、成功/失败视频和最终报告。",
         "可选 R0–R3：完成风险评审、空载验证、单物体低速灰度和事件复盘；任一门禁失败立即 controlled stop。",
@@ -1042,7 +1043,7 @@ export const lessonContent: Record<string, LessonDetail> = {
       acceptance: [
         "核心版全部 M0–M6 产出存在，配置和 checkpoint revision 可追溯。",
         "ACT/VLA/ablation 共享物理动作接口、安全过滤、seed、初始化、最大步数与成功判据。",
-        "每个报告数字都附 N 与数据来源；未运行项、失败项和暂无法验证项明确保留。",
+        "每个报告数字都附 N 与数据来源；同 seed 的模型差异保留配对记录，不以两个边际区间是否重叠代替差异分析；未运行项、失败项和暂无法验证项明确保留。",
         "至少三个失败可由日志重放，并各自落到失败树叶节点与一个最小复现。",
         "另一位工程师能在干净环境完成 smoke、恢复 checkpoint 并生成同格式 eval 报告。",
         "真机版若执行：急停、接管、TTL/watchdog、限速/空间/碰撞门禁有独立测试证据，near-miss 全部记录。",
@@ -1066,6 +1067,6 @@ export const lessonContent: Record<string, LessonDetail> = {
     pitfalls: ["把 25–40h 学习预算当 GPU 训练墙钟承诺", "挑最好视频或最好 seed", "同一场景/episode 泄漏到 train 和 test", "ACT 与 VLA 使用不同安全限幅或成功判据", "消融一次改变多个变量", "真机没有接管和独立安全层", "未运行却引用官方结果声称目标任务有效"],
     review: ["最小仿真版 M0–M6 各自阻止什么风险？", "为什么 ACT/VLA 必须统一到物理动作接口后比较？", "成功率为什么同时报告 N、分层结果和不确定性？", "如何用专家动作 replay 区分策略与执行器失败？", "哪些条件不满足时真机扩展必须停止？"],
     completion: "核心版由另一位工程师复现 M0–M6，并从日志定位失败；真机版只有在独立安全门禁和实际灰度日志存在时才报告结果，未执行部分明确标为暂无法验证。",
-    sources: [{ title: "LIBERO", url: "https://libero-project.github.io/main.html", role: "仿真 benchmark" }, { title: "ACT", url: "https://github.com/tonyzhaozh/act", role: "局部策略 baseline" }, { title: "LeRobot", url: "https://github.com/huggingface/lerobot", role: "数据与策略工程" }, { title: "SmolVLA", url: "https://huggingface.co/docs/lerobot/smolvla", role: "轻量 VLA 路线" }, { title: "openpi", url: "https://github.com/Physical-Intelligence/openpi", role: "π₀ 系列可选扩展" }], visual: "capstone",
+    sources: [{ title: "LIBERO", url: "https://libero-project.github.io/main.html", role: "仿真 benchmark" }, { title: "ACT", url: "https://github.com/tonyzhaozh/act", role: "局部策略 baseline" }, { title: "LeRobot", url: "https://github.com/huggingface/lerobot", role: "数据与策略工程" }, { title: "SmolVLA", url: "https://huggingface.co/docs/lerobot/smolvla", role: "轻量 VLA 路线" }, { title: "openpi", url: "https://github.com/Physical-Intelligence/openpi", role: "π₀ 系列可选扩展" }, { title: "Wilson 1927", url: "https://doi.org/10.1080/01621459.1927.10502953", role: "单个二项比例区间" }, { title: "McNemar 1947", url: "https://doi.org/10.1007/BF02295996", role: "配对二元比较" }, { title: "ISO 13850", url: "https://www.iso.org/standard/59970.html", role: "emergency-stop function；适用范围需按目标设备判断" }], visual: "capstone",
   },
 };

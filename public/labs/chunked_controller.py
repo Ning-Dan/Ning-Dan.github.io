@@ -19,6 +19,7 @@ def percentile(values: Sequence[float], q: float) -> float:
 class ActionChunk:
     request_id: int
     observation_time: float
+    action_start_time: float
     dt: float
     targets: tuple[float, ...]
 
@@ -54,7 +55,11 @@ class SafeExecutor:
         chunk.validate(); age = now-chunk.observation_time
         if age > self.ttl or chunk.observation_time <= self.latest_observation_time:
             self.rejected_stale += 1; return False
-        self.active, self.index, self.latest_observation_time = chunk, 0, chunk.observation_time
+        self.active = chunk
+        self.index = max(0, math.ceil((now-chunk.action_start_time)/chunk.dt))
+        self.latest_observation_time = chunk.observation_time
+        if self.index >= len(chunk.targets):
+            self.active = None; self.rejected_stale += 1; return False
         return True
 
     def tick(self, now: float) -> float:
@@ -62,6 +67,12 @@ class SafeExecutor:
         if chunk is None or now-chunk.observation_time > self.ttl or self.index >= len(chunk.targets):
             self.active = None; self.controlled_stops += 1
             return self.position  # controlled stop = hold, never replay an old action
+        scheduled_time = chunk.action_start_time + self.index*chunk.dt
+        if now+1e-12 < scheduled_time:
+            return self.position
+        while self.index < len(chunk.targets)-1 and scheduled_time < now-1e-12:
+            self.index += 1
+            scheduled_time = chunk.action_start_time + self.index*chunk.dt
         target = chunk.targets[self.index]; self.index += 1
         delta = max(-self.max_step, min(self.max_step, target-self.position))
         self.position += delta
@@ -69,10 +80,11 @@ class SafeExecutor:
         return self.position
 
 
-def goal_chunk(observation: float, goal: float, *, request_id: int, observation_time: float, horizon: int=8, dt: float=.05) -> ActionChunk:
+def goal_chunk(observation: float, goal: float, *, request_id: int, observation_time: float, action_start_time: float | None=None, horizon: int=8, dt: float=.05) -> ActionChunk:
     if horizon <= 0: raise ValueError("positive horizon required")
     step = (goal-observation)/horizon
-    return ActionChunk(request_id, observation_time, dt, tuple(observation+step*(i+1) for i in range(horizon)))
+    start = observation_time+dt if action_start_time is None else action_start_time
+    return ActionChunk(request_id, observation_time, start, dt, tuple(observation+step*(i+1) for i in range(horizon)))
 
 
 def main() -> None:
@@ -99,7 +111,7 @@ def main() -> None:
     assert executor.rejected_stale == 1
     assert executor.tick(.26) > held
 
-    try: executor.receive(ActionChunk(4,.3,dt,(math.nan,)), .3)
+    try: executor.receive(ActionChunk(4,.3,.35,dt,(math.nan,)), .3)
     except ValueError: pass
     else: raise AssertionError("NaN action accepted")
 

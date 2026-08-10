@@ -32,6 +32,19 @@ assert all(abs(a - b) < 1e-12 for a, b in zip(returns, [0.81, 0.9, 1.0]))
 assert all(abs(a - b) < 1e-12 for a, b in zip(advantages, [0.21, 0.1, 0.1]))
 print(f"RL CHECK returns={returns} advantages={[round(x, 3) for x in advantages]}")
 
+old_probability, new_probability = 0.25, 0.30
+ratio, clip_epsilon, advantage_estimate = new_probability / old_probability, 0.10, 0.50
+clipped_ratio = max(1.0 - clip_epsilon, min(1.0 + clip_epsilon, ratio))
+unclipped_objective = ratio * advantage_estimate
+clipped_objective = min(unclipped_objective, clipped_ratio * advantage_estimate)
+assert abs(ratio - 1.2) < 1e-12
+assert abs(clipped_ratio - 1.1) < 1e-12
+assert abs(clipped_objective - 0.55) < 1e-12
+print(
+    f"PPO CLIP CHECK ratio={ratio:.2f} clipped_ratio={clipped_ratio:.2f} "
+    f"surrogate={clipped_objective:.2f}"
+)
+
 
 def loss(weight: float) -> float:
     return (2.0 * weight - 3.0) ** 2

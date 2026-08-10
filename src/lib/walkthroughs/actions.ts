@@ -3,7 +3,7 @@ import type { LessonWalkthrough } from "../lessonWalkthroughTypes";
 export const actionWalkthroughs = {
   "action-representations": {
     intro:
-      "这一章不从“动作可以离散化”这种结论开始，而是带你亲手建立一份 7D 动作契约，再沿着训练集分位数、编码、解码、越界统计和元数据保存走完一次完整闭环。完成后，你应当能指出每个 token 对应的物理量，而不是只得到一个整数数组。",
+      "先建立一份 7D 动作契约，再沿训练集分位数、编码、解码、越界统计和元数据保存走完闭环。完成后，每个 token 都应能追溯到明确的物理量，而不只是整数数组中的一个位置。",
     beforeYouStart: [
       "在仓库根目录打开终端；下面所有命令都从仓库根目录运行。",
       "确认 python --version 为 Python 3.10 或更高版本；实验只使用标准库，不需要安装 PyTorch。",
@@ -254,23 +254,24 @@ loss = masked_loss(pred_tokens, target_tokens, time_valid_mask)`,
     ],
     steps: [
       {
-        title: "第 1 步：读清一个 chunk 携带的四项信息",
+        title: "第 1 步：读清一个 chunk 携带的五项信息",
         goal: "先建立消息合同，避免把动作数组与它的生成时刻分开。",
         actions: [
-          "阅读 ActionChunk dataclass，抄下 request_id、observation_time、dt、targets。",
-          "解释四项含义：request_id 标识请求；observation_time 是产生输入观测的时刻；dt 是相邻目标的时间间隔；targets 是按时间顺序排列的目标。",
+          "阅读 ActionChunk dataclass，抄下 request_id、observation_time、action_start_time、dt、targets。",
+          "解释五项含义：request_id 标识请求；observation_time 用于判断输入观测是否新鲜；action_start_time 是第一个动作目标的排程时刻；dt 是相邻目标的时间间隔；targets 按时间排列。",
           "阅读 validate()：dt 必须为正、targets 非空且每个元素有限。注意它没有验证碰撞或真实关节限位。",
-          "在纸上为 main() 的 first chunk 预留一行：request_id=1、observation_time=0、dt=0.05；targets 留到第 3 步计算。",
+          "在纸上为 main() 的 first chunk 预留一行：request_id=1、observation_time=0、action_start_time=0.05、dt=0.05；targets 留到第 3 步计算。",
         ],
         code: `ActionChunk(
   request_id=1,
   observation_time=0.00,
+  action_start_time=0.05,
   dt=0.05,
   targets=(...),
 )`,
         expected: [
           "你能指出新旧 chunk 的比较依据是 observation_time，而不是到达顺序或 request_id 数值本身。",
-          "你能解释为何 targets 不能脱离 dt 使用：否则无法知道每个元素预定何时执行。",
+          "你能解释为何 targets 不能脱离 action_start_time 和 dt 使用：第 i 项的排程时刻是 action_start_time+i×dt。",
         ],
         checkpoint:
           "回答：request_id=3 是否天然比 request_id=2 更新？本脚本不这样判断；receive() 真正比较的是 observation_time。",
@@ -286,7 +287,7 @@ loss = masked_loss(pred_tokens, target_tokens, time_valid_mask)`,
           "找到 main() 中 10 个 latencies，并按升序核对它们已经排列：最大值为 0.22 s。",
           "阅读 percentile() 的 nearest-rank 实现：索引为 ceil(q×n)-1。代入 q=.99、n=10，得到 ceil(9.9)-1=9，因此 p99=latencies[9]=0.22 s。",
           "加入 margin=.03 s，得到要覆盖的时间 0.25 s。再除以 dt=.05 s/action，ceil(0.25/0.05)=5 个动作。",
-          "把这 5 个动作写成“课程中的保守储备估计”，不要写成统计学保证：样本只有 10 个，且分项 p99 不能随意相加成端到端 p99。",
+          "把这 5 个动作写成“本组端到端样本换算出的初始储备”。样本只有 10 个，最大值充当 nearest-rank p99，不能据此声称已经掌握真实尾部。",
         ],
         code: `p99 = 0.22 s
 margin = 0.03 s
@@ -357,7 +358,7 @@ receive age  -> 0.04 s < 0.18 s`,
         title: "第 5 步：逐 tick 手算限幅后的真实位置",
         goal: "看清计划目标与执行位置之间为何不同。",
         actions: [
-          "阅读 SafeExecutor.tick() 的正常分支：取当前 target，index 加 1，再把 target-position 裁到 [-max_step,max_step]。",
+          "阅读 SafeExecutor.tick() 的正常分支：先核对 action_start_time+index×dt 是否已经到达；再取当前 target、推进 index，并把 target-position 裁到 [-max_step,max_step]。",
           "第一个 target=.125，初始 position=0，差值 .125 被 max_step=.08 限为 .08，所以 position=.08。",
           "第二个 target=.25，差值 .17，再加 .08 得 .16；第三个 target=.375，差值 .215，再加 .08 得 .24。",
           "把计划序列 (.125,.25,.375) 与实际序列 (.08,.16,.24) 并排写出，并注明限制发生在执行器而不是模型。",
@@ -433,7 +434,8 @@ executor = SafeExecutor(ttl=.30, max_step=.08)
         goal: "把一维队列机制扩展为 VLA 服务与机器人执行器之间可验收的接口。",
         actions: [
           "把 targets 从 tuple[float,...] 改成概念上的 tuple[tuple[float,...],...]：外层长度 H，内层长度 dₐ。先选并记录例如 H=16、dₐ=7、dt=.05。",
-          "每个 chunk 同时携带 schema_version、request_id、observation_time、frame、units、dt 和 H×dₐ targets；接收时先做 shape/finite/合同版本检查。",
+          "每个 chunk 同时携带 schema_version、request_id、observation_time、clock_id、action_start_time、frame、units、dt 和 H×dₐ targets；接收时先做 shape/finite/合同版本检查。",
+          "响应晚到时按 action_start_time 和 dt 跳过已经属于过去的前缀；observation_time 只参与新鲜度判断，不能代替执行排程锚点。",
           "把 max_step 扩展为每维限制向量，并在每个 tick 对 dₐ 维分别限幅；禁止依赖广播悄悄把标量限制用于所有米/弧度维。",
           "用真实端到端时间戳记录 observation→encode→inference→network→receive→execute，直接统计端到端 p50/p95/p99；不要把若干分项 p99 相加冒充测量结果。",
           "做四个故障注入：延迟超过 TTL、旧请求晚到、chunk 含 NaN、模型服务断流；逐项记录执行器是否进入预先定义的 controlled stop。",
@@ -443,7 +445,7 @@ executor = SafeExecutor(ttl=.30, max_step=.08)
 max_step.shape == (action_dim,)
 
 receive gates:
-schema -> shape -> finite -> timestamp/TTL -> per-axis limits -> queue`,
+schema -> shape -> finite -> clock/timestamp/TTL -> skip expired prefix -> per-axis limits -> queue`,
         expected: [
           "你得到一份可实现的 chunk 服务合同和故障注入清单，而不只是“使用 action chunking”。",
           "Toy 中的 reserve=5 只作为计算示例；真实 reserve 必须使用目标部署链路的端到端测量重新计算。",
@@ -483,7 +485,7 @@ schema -> shape -> finite -> timestamp/TTL -> per-axis limits -> queue`,
       {
         question: "为什么不能直接把几个模块的 p99 相加成系统 p99？",
         answer:
-          "分项延迟并非必然独立且各自第 99 百分位通常不是同一次请求。端到端 p99 应直接从完整链路样本测量；相加最多是需明确标注的保守预算启发式。",
+          "分项延迟可能相关，各自第 99 百分位通常也不是同一次请求。直接相加既可能高估，也可能低估系统 p99。生产预算应优先使用同一请求边界的端到端样本；若要概率保证，还需显式分配尾部风险。",
       },
     ],
   },
@@ -527,21 +529,21 @@ dL/da = 2a = 0  =>  a* = 0`,
         goal: "把 DDPM 训练样本公式落实为一个可核算数值。",
         actions: [
           "阅读 make_schedule()：第 0 步 beta₀=.015，所以 alpha₀=.985，alpha_bar₀=.985。",
-          "取具体 clean_action x₀=2.0、step=0、noise ε=-0.5。按 train() 中公式计算 sqrt(.985)×2 + sqrt(.015)×(-.5)。",
-          "算得 noisy_action x_t≈1.9237。训练输入 features() 的第一项为 x_t/3≈0.6412；tau=0，另外两项 sin(0)=0、cos(0)=1。",
+          "取具体 clean_action x₀=2.0、step=0、noise ε=-0.5。按 train() 中公式计算 sqrt(.99)×2 + sqrt(.01)×(-.5)。",
+          "算得 noisy_action x_t≈1.9400。训练输入 features() 的第一项为 x_t/3≈0.6467；tau=0，另外两项 sin(0)=0、cos(0)=1。",
           "监督目标不是 clean_action，而是本次实际加入的 ε=-0.5。若模型预测 -0.2，这个单样本噪声 MSE 为 (-0.2-(-0.5))²=.09。",
         ],
-        code: `beta_0 = 0.015
-alpha_bar_0 = 0.985
+        code: `beta_0 = 0.01
+alpha_bar_0 = 0.99
 x_0 = 2.0
 epsilon = -0.5
 
-x_t = sqrt(0.985)*2.0 + sqrt(0.015)*(-0.5)
-    ≈ 1.9237
-features = (1.9237/3, 0, 0, 1)
+x_t = sqrt(0.99)*2.0 + sqrt(0.01)*(-0.5)
+    ≈ 1.9400
+features = (1.9400/3, 0, 0, 1)
 target_noise = -0.5`,
         expected: [
-          "你得到 x_t≈1.9237 和特征约 (0.6412,0,0,1)。",
+          "你得到 x_t≈1.9400 和特征约 (0.6467,0,0,1)。",
           "你能指出 train_batch() 的 target_noise 来自随机 ε，而不是模式标签或 x₀。",
         ],
         checkpoint:
@@ -557,12 +559,12 @@ target_noise = -0.5`,
         actions: [
           "先读 sample_expert(rng)：rng.random()<.5 选择 -2，否则 +2，再加 rng.gauss(0,.12)。它没有观测或语言条件。",
           "读 train(seed=17, iterations=4500, batch_size=64)：固定 seed 后，每个 iteration 重新构造 64 条样本。",
-          "对每条样本按代码顺序编号：采 clean_action → 均匀采 step∈[0,23] → 采标准高斯 noise → 查 alpha_bar → 生成 noisy_action → 构造四维 features → 把 noise 作为 label。",
+          "对每条样本按代码顺序编号：采 clean_action → 均匀采 step∈[0,49] → 采标准高斯 noise → 查 alpha_bar → 生成 noisy_action → 构造四维 features → 把 noise 作为 label。",
           "读 features(noisy_action,step,total_steps)：网络看到 x_t/3、tau、sin(pi tau)、cos(pi tau)。后 3 项让网络知道当前噪声阶段。",
           "在纸上写 shape：单样本 inputs=(4,)，target_noise 是标量；一个 batch 是 64 个这样的 pair。",
         ],
         code: `clean_action ~ expert mixture
-step         ~ Uniform{0,...,23}
+step         ~ Uniform{0,...,49}
 noise        ~ N(0,1)
 noisy_action = sqrt(alpha_bar[step])*clean_action
              + sqrt(1-alpha_bar[step])*noise
@@ -603,7 +605,7 @@ loss  = mean(error^2)`,
         checkpoint:
           "为什么 old_w2 要在更新前复制？当前实现虽然统一在末尾更新参数，但反向计算隐藏梯度必须使用同一次前向对应的输出权重。",
         troubleshooting: [
-          "不要把隐藏层 32 当成扩散步数；schedule 有 24 步，两者是不同超参数。",
+          "不要把隐藏层 32 当成扩散步数；schedule 有 50 步，两者是不同超参数。",
           "这个手写网络用于暴露机制，不应作为真实 VLA 的性能实现。",
         ],
       },
@@ -618,13 +620,14 @@ loss  = mean(error^2)`,
         ],
         code: `python public/labs/diffusion_multimodal_1d.py`,
         expected: [
-          "training MSE checkpoints: [1.2387, 0.5476, 0.2494, 0.2901]",
+          "training MSE checkpoints: [1.2887, 0.4228, 0.3473, 0.3680]",
+          "terminal alpha_bar=0.003536；它足够小，因而从 N(0,1) 初始化是明确的近似，但不是有限步严格恒等。",
           "single-MSE baseline (expert mean): -0.0630",
-          "sample q10/q50/q90 约为 [-2.084,1.674,2.113]。",
-          "mode counts: negative=189, central=0, positive=211, total=400，随后出现 PASS 与 BOUNDARY。",
+          "sample q10/q50/q90 约为 [-2.098,1.551,2.129]。",
+          "mode counts: negative=197, central=1, positive=202, total=400，随后出现 max_abs、PASS 与 BOUNDARY。",
         ],
         checkpoint:
-          "解释为何 0.2901 高于 0.2494 仍不自动代表训练退化：这是不同在线随机 batch 的瞬时 MSE；应同时用固定验证集和最终采样指标判断。",
+          "解释为何 0.3680 高于 0.3473 仍不自动代表训练退化：这是不同在线随机 batch 的瞬时 MSE；应同时用固定验证集和最终采样指标判断。",
         troubleshooting: [
           "若输出不同，确认 seed=17、iterations=4500、batch_size=64、采样 seed=23 均未修改。",
           "若运行时间明显过长，先确认使用本机 Python 而非带调试逐行模式；不要为了赶时间直接把输出文本当结果。",
@@ -634,30 +637,30 @@ loss  = mean(error^2)`,
         title: "第 6 步：手算反向采样的一步",
         goal: "理解模型预测的噪声如何在 DDPM 更新中把 x_t 推向低噪声样本。",
         actions: [
-          "阅读 sample()：每条样本先从 N(0,1) 初始化 action，再从 step=23 倒序走到 0。",
-          "取一个具体演示：step=23、action=1.0、predicted_noise=.2。由 schedule 得 beta=.12、alpha=.88、alpha_bar≈.184324。",
-          "代入 mean=(action-beta×predicted_noise/sqrt(1-alpha_bar))/sqrt(alpha)，算得 mean≈1.037676。",
-          "step>0 时还会加后验噪声；该步 posterior_variance≈.116302，因此实际下一状态是 1.037676+sqrt(.116302)×z。z 每次采样不同，这正是随机生成的一部分。",
+          "阅读 sample()：每条样本先从 N(0,1) 近似初始化 action，再从 step=49 倒序走到 0。先检查终端 ᾱ_T≈0.003536；若它不够小，标准高斯初值会明显错配 q(x_T)。",
+          "取一个具体演示：step=49、action=1.0、predicted_noise=.2。由 schedule 得 beta=.20、alpha=.80、alpha_bar≈.003536。",
+          "代入 mean=(action-beta×predicted_noise/sqrt(1-alpha_bar))/sqrt(alpha)，算得 mean≈1.073233。",
+          "step>0 时还会加后验噪声；该步 posterior_variance≈.199823，因此实际下一状态是 1.073233+sqrt(.199823)×z。z 每次采样不同，这是随机生成的一部分。",
           "当 step=0 时不再加随机项，直接令 action=mean。",
         ],
-        code: `step = 23
+        code: `step = 49
 x_t = 1.0
 predicted_noise = 0.2
-beta = 0.12
-alpha = 0.88
-alpha_bar = 0.1843235
+beta = 0.20
+alpha = 0.80
+alpha_bar = 0.0035364
 
 mean = (x_t - beta*predicted_noise/sqrt(1-alpha_bar))/sqrt(alpha)
-     ≈ 1.037676
-posterior_variance ≈ 0.116302`,
+     ≈ 1.073233
+posterior_variance ≈ 0.199823`,
         expected: [
-          "你能指出采样循环方向是 23→0，而训练 step 是随机采样。",
+          "你能指出采样循环方向是 49→0，而训练 step 是随机采样。",
           "你知道一次 mean 更新还不是最终动作；要走完整个 schedule，且 step>0 包含随机后验项。",
         ],
         checkpoint:
           "若 step=0，代码是否仍采 z？不会；else 分支直接 action=mean。",
         troubleshooting: [
-          "不要把 sample() 中的 count=400 当 diffusion steps；每条样本使用 24 个 steps，一共生成 400 条样本。",
+          "不要把 sample() 中的 count=400 当 diffusion steps；每条样本使用 50 个 steps，一共生成 400 条样本。",
           "本手算固定 predicted_noise=.2 只是解释公式；真实值由训练后的 TinyDenoiser.forward() 给出。",
         ],
       },
@@ -666,20 +669,20 @@ posterior_variance ≈ 0.116302`,
         goal: "用一个明确反例确认反向公式的符号不是书写细节。",
         actions: [
           "在 work/diffusion-policy/diffusion_work.py 的 sample() 中，紧跟 predicted_noise,_=model.forward(...) 临时加入 predicted_noise = -predicted_noise；不要修改训练部分或原文件。",
-          "运行 python work/diffusion-policy/diffusion_work.py。固定随机种子下，central 计数会变成 174，并在 assert central < 120 处以 AssertionError: 174 停止。",
-          "解释原因：mean 公式本应减去预测噪声，先把预测值取反等价于沿错误方向修正；样本会大量进入中心区，且可出现非常宽的异常范围。",
-          "删除工作副本中的临时取反行，重新运行；必须恢复 negative=189、central=0、positive=211 和最终 PASS。",
+          "运行 python work/diffusion-policy/diffusion_work.py。固定随机种子下，样本绝对值会膨胀到约 220，并在 assert max_abs < 4.0 处失败。",
+          "解释原因：mean 公式本应减去预测噪声，先把预测值取反等价于沿错误方向修正。只看正负模式计数可能漏掉这种爆炸，所以脚本还检查数值范围。",
+          "删除工作副本中的临时取反行，重新运行；必须恢复 negative=197、central=1、positive=202、max_abs<4 和最终 PASS。",
         ],
         code: `predicted_noise, _ = model.forward(...)
 predicted_noise = -predicted_noise  # 只为错误消融临时加入
 
 python work/diffusion-policy/diffusion_work.py
 
-# 固定种子下预期失败：
-AssertionError: 174`,
+# 固定种子下预期失败（末尾数值约 220）：
+AssertionError: <max_abs>`,
         expected: [
-          "错误版本不会显示最终 PASS，而是在中心计数断言处失败。",
-          "恢复后重新得到 central=0；这验证了测试能捕捉该符号错误。",
+          "错误版本不会显示最终 PASS，而是在样本范围断言处失败。",
+          "恢复后重新得到 max_abs<4；这验证了测试能捕捉该符号错误。",
         ],
         checkpoint:
           "你能指出改错发生在采样器，不在训练数据或模型权重；因此相同模型也会因 solver 公式错误而生成坏结果。",
@@ -719,13 +722,13 @@ loss = masked_mean((predicted_noise - noise) ** 2)`,
     ],
     finalArtifact: [
       "两峰分布下常数 MSE 最优值为 0 的完整手算。",
-      "x₀=2、ε=-.5、step=0 的前向加噪与噪声 loss 手算。",
+      "x₀=2、ε=-.5、step=0 的前向加噪与噪声 loss 手算，以及终端 ᾱ_T 检查。",
       "训练 checkpoints、采样分位数和三段 mode counts 的复现记录。",
-      "错误符号导致 AssertionError: 174 的消融记录，以及恢复 PASS 的证据。",
+      "错误符号导致样本范围断言失败的消融记录，以及恢复 PASS 的证据。",
       "条件 H×dₐ 训练、采样、消融和部署验收清单。",
     ],
     verifiedBoundary:
-      "已在确定性一维 Toy 实验中确认噪声监督训练、24 步 DDPM 反向采样以及双峰样本计数；错误去噪符号会被验收捕获。该结果不证明图像/语言条件有效、轨迹动力学可行、Diffusion Policy 复现成功或真机任务安全。",
+      "已在确定性一维 Toy 实验中确认噪声监督训练、50 步 DDPM 近似反向采样、终端 ᾱ_T 与双峰样本计数；错误去噪符号会被样本范围验收捕获。该结果不证明有限步先验严格匹配，也不证明图像/语言条件、轨迹动力学、Diffusion Policy 复现或真机安全。",
     knowledgeCheck: [
       {
         question: "这个 Toy 中，为什么常数 MSE 预测接近 0？",
