@@ -20,16 +20,20 @@ export default function Footer({ lastUpdated, lastUpdatedByLocale, defaultLocale
     new Date().toLocaleDateString(locale || 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
-    <footer className="border-t border-neutral-200/50 bg-neutral-50/50 dark:bg-neutral-900/50 dark:border-neutral-700/50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
-          <p className="text-xs text-neutral-500">Robotics Notebook · 匿名技术工作台 · {resolvedLastUpdated}</p>
-          <p className="text-xs text-neutral-500 flex items-center">
-            <a href="https://github.com/xyjoey/PRISM" target="_blank" rel="noopener noreferrer">
-              {messages.footer.builtWithPrism}
-            </a>
-            <span className="ml-2">🚀</span>
-          </p>
+    <footer className="site-footer">
+      <div className="site-footer-inner">
+        <div className="site-footer-identity">
+          <span aria-hidden="true">RN / 26</span>
+          <div>
+            <strong>Robotics Notebook</strong>
+            <p>原理、实验与真实系统边界的长期技术笔记。</p>
+          </div>
+        </div>
+        <div className="site-footer-meta">
+          <span>LAST UPDATED · {resolvedLastUpdated}</span>
+          <a href="https://github.com/xyjoey/PRISM" target="_blank" rel="noopener noreferrer">
+            {messages.footer.builtWithPrism} ↗
+          </a>
         </div>
       </div>
     </footer>

@@ -27,16 +27,16 @@ export const supplementalWalkthroughs = {
   },
 
   "act-cvae": {
-    intro: "先画训练/推理两条信息流，再手算 KL 和重叠动作融合；最后才把 ACT 接到 VLA 的统一接口。",
-    beforeYouStart: ["已完成 action-chunking。", "能读取 H×dₐ 张量。", "安装只需 Python 3.10+。"],
+    intro: "直接复用 BC 章冻结的数据切分与 H=16、dₐ=7 动作合同：先画训练/推理两条信息流，再把本章三段推导逐一映射到 KL、masked chunk loss 和重叠动作融合；最后让 ACT 与后续 VLA 共用接口。",
+    beforeYouStart: ["已完成数学地基与 Behavior Cloning，并保留 BC 的 dataset/checkpoint/rollout 产物。", "能读取 H×dₐ 张量；动作单位、frame、dt 和训练集统计沿用 BC 章，不在本章重新拟合。", "安装只需 Python 3.10+；action-chunking 的 TTL 与异步执行将在下一章继续完成。"],
     steps: [
       { title: "画训练信息流", goal: "标出未来动作只在训练期可见。", actions: ["画 image/q/action_chunk 三个输入。", "action_chunk+q 进入 style encoder。", "采样 z 后 image/q/z 进入 decoder。"], expected: ["真实未来动作不直接进入 decoder 输出端。", "q 同时可用于 encoder 与 decoder。"], checkpoint: "能指出 posterior 的条件。", troubleshooting: ["不要把未来 action 当普通传感器。"] },
       { title: "画推理信息流", goal: "消除训练期未来信息泄漏。", actions: ["删掉 action_chunk 和 style encoder。", "按 checkpoint 约定将 z=0 或从先验采样。", "保留 image/q→decoder。"], expected: ["推理图没有 ground-truth future action。"], checkpoint: "训练与推理差异已用颜色标出。", troubleshooting: ["若实现推理仍调用 encoder，检查官方 checkpoint 代码路径。"] },
       { title: "手算重参数化与 KL", goal: "看懂 CVAE 的两项损失。", actions: ["用数学地基章 μ、σ 复算 KL。", "固定 ε=0.25 算 z=μ+σε。", "说明固定 ε 只用于可复现教学。"], expected: ["z 可被确定性复算。", "KL 非负。"], checkpoint: "可以解释为什么需要重参数化。", troubleshooting: commonMathTrouble },
-      { title: "构造三个重叠 chunk", goal: "按真实执行时刻而不是数组索引对齐。", actions: ["写 query 0 预测时刻0,1,2。", "query 1 预测时刻1,2,3。", "query 2 预测时刻2,3,4。"], expected: ["执行时刻 2 有三个候选。"], checkpoint: "每个候选能追溯 query_time 和 offset。", troubleshooting: ["用 execute_time=query_time+offset，不要凭数组位置。"] },
+      { title: "构造三个重叠 chunk", goal: "按真实执行时刻对齐，并把候选顺序与权重方向分开检查。", actions: ["写 query 0 预测时刻0,1,2。", "query 1 预测时刻1,2,3。", "query 2 预测时刻2,3,4。", "对执行时刻 2 按旧→新排列三个候选；分别计算官方代码的 exp(−k·index) 与年龄衰减 exp(−k·age)。"], expected: ["执行时刻 2 有三个候选。", "官方固定实现给旧候选更高权重；年龄衰减对照给新候选更高权重，两者结果不同。"], checkpoint: "每个候选能追溯 query_time 和 offset，并能说明权重到底作用于数组 index 还是物理 age。", troubleshooting: ["用 execute_time=query_time+offset，不要凭数组位置。", "只看到 exp(−ki) 不能判断偏好新旧，必须先写候选排列顺序。"] },
       { title: "运行 ACT 机制脚本", goal: "核对 KL 与融合算术。", actions: ["运行命令。", "将输出抄入你的重叠表。"], code: "python public/labs/act_cvae_mechanics.py", expected: ["打印 KL、候选和加权结果。", "末行 ACT MECHANICS PASS。"], checkpoint: "脚本与手算一致。", troubleshooting: commonMathTrouble },
       { title: "制造一格时间错位", goal: "看见 temporal ensemble 不是普通平滑。", actions: ["只把一个 query_time 加 1。", "重新列执行时刻 2 的候选。", "比较融合前后。"], expected: ["候选集合或权重变化。"], checkpoint: "能定位到时间戳而非模型权重。", troubleshooting: ["确保只改 query_time。"] },
-      { title: "处理 padding 与 valid mask", goal: "避免短 episode 的零填充参与 loss。", actions: ["构造剩余 2 步但 H=4 的样本。", "写 actions shape [4,dₐ] 和 mask=[1,1,0,0]。", "确认 loss 只聚合有效位置。"], expected: ["padding 值改变不会改变 masked loss。"], checkpoint: "断言 padding invariance。", troubleshooting: ["检查 mask 广播到 action 维。"] },
+      { title: "处理 padding 与 valid mask", goal: "把教材中的 masked reconstruction 变成可执行断言。", actions: ["先复算教材数值例：误差 [0.1,−0.2,0,10]、mask=[1,1,1,0]，valid-only L1 应为 0.1，完整张量 mean 应为 0.075。", "再构造剩余 2 步但 H=4 的样本，写 actions shape [4,dₐ] 和 mask=[1,1,0,0]。", "把 padding 从 0 改为 10^6，确认两种 masked reduction 都不受 padding 数值影响，同时记录二者尺度差异。"], expected: ["padding 值改变不会改变 masked loss。", "忘记 mask 时损失会被故意放大的 padding 主导。", "valid-only mean 与官方代码风格的 full-tensor mean 数值不同，但差异可由分母解释。"], checkpoint: "padding invariance 断言通过，并能说出当前训练代码采用哪一种 reduction。", troubleshooting: ["检查 mask 是否广播到 action 维。", "若两个 batch 的有效步数不同，检查 reduction 是否除以有效元素数还是固定 B×H×dₐ。"] },
       { title: "让 ACT 与 π₀.₅ 共用接口", goal: "用窄基线定位模型与系统问题。", actions: ["定义统一 PolicyRequest。", "把 ACT 输出反归一化为与 π₀.₅ 相同的物理 slice。", "让两者通过同一 TTL/限幅/日志。"], expected: ["评测器不需要知道后端是 ACT 还是 VLA。"], checkpoint: "同一固定输入可切换 policy revision。", troubleshooting: ["若结果尺度不同，先比 raw/norm/denorm 三层。"] },
     ],
     finalArtifact: ["训练/推理双色图。", "KL 与 z 手算。", "重叠 chunk/时间错位表。", "统一 PolicyRequest/Response。"],

@@ -72,7 +72,7 @@ export default function Home() {
         <div className="featured-copy">
           <p className="eyebrow">Featured learning project</p>
           <h2>VLA：从第一性原理到可运行系统</h2>
-          <p>14 章中文深度教程，覆盖发展史、动作 token、Diffusion / Flow、π₀.₅、世界模型、前沿方向、数据与部署；配套经过执行验证的 Python 实验。</p>
+          <p>18 章中文深度教程，覆盖数学地基、ACT、动作 token、Diffusion / Flow、π₀.₅、世界模型、后训练与部署；配套 13 个经过执行验证的 Python 实验。</p>
           <div className="featured-links">
             <Link href="/learning/vla">查看课程地图 →</Link>
             <Link href="/learning/vla/labs">进入实操工坊 →</Link>

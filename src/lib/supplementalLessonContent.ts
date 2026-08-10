@@ -41,8 +41,8 @@ export const supplementalLessonContent = {
   },
 
   "act-cvae": {
-    lead: "ACT 不只是‘一次预测一段动作’。它把 CVAE 的潜变量、动作块监督、训练/推理信息不对称和重叠预测融合成一条完整链路，是理解现代连续动作 VLA 的重要桥梁。",
-    objectives: ["画出 ACT 训练与推理的两条数据流。", "从 ELBO 解释 reconstruction 与 KL。", "区分 chunk horizon、execution horizon 与 temporal ensemble。", "实现重叠动作预测的指数加权融合。", "用同一 action contract 比较 ACT 与 VLA。"],
+    lead: "本章直接接收上一章的 BC 数据、冻结切分和 H=16、dₐ=7 动作合同：先把单步回归升级为带潜变量的动作块，再把同一物理执行时刻的重叠预测融合。ACT 因而不是孤立的 baseline 名称，而是从 BC 走向连续动作 VLA 的可运行桥梁。",
+    objectives: ["在贯穿案例上画出 ACT 训练与推理的两条数据流。", "从条件似然逐步推出 ELBO，并手算 diagonal Gaussian KL。", "写出带 time/action mask 的 H×dₐ reconstruction loss。", "区分 chunk horizon、execution horizon 与 temporal ensemble。", "让 ACT 与后续 VLA 复用同一 action contract、评测器和安全层。"],
     timePlan: [
       { duration: "0:00–0:50", title: "拆训练/推理图", activity: "标出 style encoder 只在训练看到 action。", deliverable: "双色信息流图。" },
       { duration: "0:50–1:50", title: "手推 CVAE", activity: "手算重参数化与一维 KL。", deliverable: "ELBO 数值表。" },
@@ -51,24 +51,78 @@ export const supplementalLessonContent = {
       { duration: "3:40–5:00", title: "迁移到统一接口", activity: "让 ACT 与 π₀.₅ 输出同一物理 action contract。", deliverable: "可交换的 PolicyResponse 示例。" },
     ],
     theory: [
-      "ACT 的训练样本不是单步 (oₜ,aₜ)，而是当前观测/本体状态与未来动作块 Aₜ:t+H−1。CVAE encoder 在训练时读取当前关节状态与真实动作块，产生 qφ(z|q,A)；decoder/Transformer 读取图像、状态与 z 预测整个动作块。",
+      "沿用全课程案例，一条训练样本包含最近 K=2 帧双相机图像、当前机器人状态 qₜ、语言指令 ℓ，以及未来动作块 Aₜ∈R^{16×7}。BC 章的 episode split、动作单位、tool frame 和训练集统计全部保持不变；ACT 只改变策略怎样建模未来动作，不重新定义物理接口。",
+      "ACT 的训练目标不是单步 (oₜ,aₜ)，而是条件动作块分布 pθ(Aₜ|xₜ)。CVAE encoder 在训练时读取当前状态与真实动作块，产生 qφ(z|x,A)；decoder/Transformer 读取图像、状态、语言与 z 预测整个动作块。潜变量 z 用来承载同一条件下无法由 x 唯一确定的动作风格或轨迹模式。",
       "推理时没有未来真实动作，因此训练期的 style encoder 被移除。ACT 论文的常用做法把 z 设为零；这意味着训练必须让 decoder 在该推理约定下可用。不能在部署时误把上一段预测当作 ground-truth action 喂入 encoder。",
+      "动作块越过 episode 结尾时必须 padding，但 padding 不是专家的静止动作。time mask 应广播到 7 个动作维，再结合每维尺度或权重计算 reconstruction loss；归一化统计仍然只来自 BC 章冻结的 train split。",
       "Temporal ensemble 与 receding horizon 不同：前者把不同时刻预测、但指向同一执行时刻的动作做加权融合，减小预测跳变；后者决定每次只执行动作块前缀后再观测。二者都依赖绝对执行时刻或严格索引，延迟时不能只按数组位置拼接。",
-      "ACT 适合作为窄策略基线：模型较小、接口明确、动作块机制与 VLA 相近。它成功只给出‘在该数据、配置和接口下存在可学窄策略’的正证据，不证明一般任务可学，也不证明 VLA 失败一定来自模型。",
+      "ACT 适合作为窄策略基线：它和后续 VLA 接收相同 PolicyRequest、输出相同 H×7 物理合同，并经过相同 TTL、限幅和评测器。ACT 成功只给出‘这批数据和接口可以学出窄策略’的正证据；如果 VLA 失败，仍需继续区分模型、适配和训练配置。",
     ],
     deepDive: [
       { title: "1. 训练看得到、推理看不到的信息", paragraphs: ["训练：A_true→style encoder→(μ,logσ²)→z；image/q/z→decoder→Â。推理：没有 A_true，style encoder 被丢弃，z 按实现约定取零或先验样本。", "如果把训练路径原样复制到推理，会产生无法获得的未来信息；如果训练时不检查 z=0 路径，重建很好也可能部署失败。"], takeaways: ["未来动作只属于训练后验。", "推理 z 约定必须与 checkpoint 配套。"] },
       { title: "2. Chunk 与 temporal ensemble 的时间语义", paragraphs: ["t=10 的模型预测执行时刻 10…19；t=11 又预测 11…20。执行时刻 12 同时有来自 query 10 的第 2 项、query 11 的第 1 项、query 12 的第 0 项。temporal ensemble 对这些候选按预测年龄加权。", "若模型查询晚到 150ms，数组第 0 项可能已经属于过去；必须先按 observation_time 与 action_dt 对齐，再参与融合。"], takeaways: ["融合对象是同一物理执行时刻。", "先做时间对齐，再做权重。"] },
       { title: "3. 证据边界", paragraphs: ["【已确认】ACT 原论文使用 CVAE 动作块与 temporal ensembling；本站脚本只核对 KL、重参数化和融合算术。", "【合理推测】ACT 与 VLA 共用接口有助于定位 adapter/执行器错误。", "【个人观点】在 π₀.₅ 前完整做一次 ACT，比直接把它写成 baseline 名称更适合自学。", "【暂无法验证】你的双臂移动任务所需 H、KL 权重和 ensemble 衰减必须实测。"], takeaways: ["Toy 算术不是 ACT 训练复现。", "真实超参数不能从教程抄答案。"] },
     ],
-    formula: { latex: String.raw`z=\mu_\phi+\sigma_\phi\odot\epsilon,\ \epsilon\sim\mathcal N(0,I),\qquad \bar a_\tau=\frac{\sum_{t\le\tau}e^{-k(\tau-t)}\hat a_{t\rightarrow\tau}}{\sum_{t\le\tau}e^{-k(\tau-t)}}`, symbols: [
-      { symbol: "μ,σ", meaning: "训练期 style encoder 的后验参数。" }, { symbol: "ε", meaning: "重参数化噪声。" }, { symbol: "τ", meaning: "真实执行时刻。" }, { symbol: "âₜ→τ", meaning: "query t 对执行时刻 τ 的预测。" }, { symbol: "k", meaning: "旧预测衰减系数。" },
-    ], note: "不同 ACT 实现的权重方向、z 处理与 padding mask 可能不同；必须以固定 commit 和 checkpoint 配置为准。" },
-    practice: { title: "CVAE 与重叠预测算术", summary: "运行脚本，先核对确定性数值，再改错时间索引。", steps: ["运行 python public/labs/act_cvae_mechanics.py。", "复算 KL。", "画出三条重叠 chunk。", "将 query_time 偏移一格并观察融合错误。"], acceptance: ["能解释训练/推理差异。", "融合值与脚本一致。", "能定位错位来源。"], status: "已验证", code: "python public/labs/act_cvae_mechanics.py", expected: ["输出 KL、三个同执行时刻候选与加权动作，最后 ACT MECHANICS PASS。"], debugging: ["KL 为负通常是公式符号错。", "融合候选数错先核对 query_time+offset。"] },
+    derivations: [
+      {
+        title: "从条件似然到 CVAE 的 ELBO",
+        question: "真实动作模式 z 没有标签，为什么仍然可以训练 pθ(A|x,z)？",
+        steps: [
+          { label: "从真正想最大化的条件似然开始", latex: String.raw`\log p_\theta(\mathbf A\mid\mathbf x)=\log\int p_\theta(\mathbf A\mid\mathbf x,\mathbf z)\,p(\mathbf z)\,d\mathbf z`, explanation: "x 是图像、语言与本体状态，A 是 16×7 动作块。ACT 的实现采用标准正态先验 p(z)=N(0,I)；积分表示所有潜在动作风格都可能生成这段动作，但直接计算通常不可行。" },
+          { label: "乘除同一个近似后验", latex: String.raw`\log p_\theta(\mathbf A\mid\mathbf x)=\log\mathbb E_{q_\phi(\mathbf z\mid\mathbf x,\mathbf A)}\!\left[\frac{p_\theta(\mathbf A\mid\mathbf x,\mathbf z)p(\mathbf z)}{q_\phi(\mathbf z\mid\mathbf x,\mathbf A)}\right]`, explanation: "训练时真实 A 已知，因此 encoder 可以构造 qφ(z|x,A)，把难算的积分改写成可采样的期望。这个后验只属于训练路径。" },
+          { label: "用 Jensen 不等式得到可优化下界", latex: String.raw`\log p_\theta(\mathbf A\mid\mathbf x)\ge\mathbb E_q[\log p_\theta(\mathbf A\mid\mathbf x,\mathbf z)]-D_{\mathrm{KL}}\!\left(q_\phi(\mathbf z\mid\mathbf x,\mathbf A)\,\|\,p(\mathbf z)\right)`, explanation: "第一项要求 decoder 重建动作块，第二项要求训练后验不要远离推理时使用的标准正态先验。最小化负下界得到 reconstruction + KL。" },
+          { label: "写成实现中的 β 加权损失", latex: String.raw`\mathcal L_{\mathrm{ACT}}=\mathcal L_{\mathrm{rec}}+\beta\,D_{\mathrm{KL}}(q_\phi\|p)`, explanation: "β=1 对应标准 ELBO；β≠1 是训练权衡，不能再把它无条件称为原始对数似然下界。β 太大可能忽略 z，太小会扩大训练后验与推理先验的差距。" },
+        ],
+        workedExample: {
+          title: "手算二维 diagonal Gaussian KL",
+          setup: "令 q=N(μ,diag(σ²))、p=N(0,I)，μ=(0.4,−0.2)，log σ²=(log 0.25,0)。",
+          steps: ["使用 KL=½Σⱼ(μⱼ²+σⱼ²−logσⱼ²−1)。", "第 1 维贡献 ½(0.16+0.25−log0.25−1)≈0.3981。", "第 2 维贡献 ½(0.04+1−0−1)=0.0200。"],
+          result: "KL≈0.4181，非负；μ=0、logσ²=0 时恰为 0。",
+        },
+        implementation: "encoder 输出 mu 与 logvar；采样写成 z=mu+exp(0.5*logvar)*eps。不要把 logvar 直接当 σ，也不要在推理时调用需要真实 A 的后验 encoder。",
+      },
+      {
+        title: "带 padding mask 的动作块 L1 重建损失",
+        question: "episode 只剩几步时，怎样保证补齐到 H=16 的数值不被模型当成专家动作？",
+        steps: [
+          { label: "先保留时间轴和动作轴", latex: String.raw`\mathbf A,\hat{\mathbf A}\in\mathbb R^{B\times H\times d_a},\qquad \mathbf m\in\{0,1\}^{B\times H}`, explanation: "在贯穿案例中 H=16、dₐ=7。mask 只描述某个未来时刻是否真实存在，再广播到动作维；不能把 112 个数展平后丢失时间语义。" },
+          { label: "只在有效元素上聚合", latex: String.raw`\mathcal L_{\mathrm{rec}}^{\mathrm{valid}}=\frac{\sum_{b,h,j}m_{b,h}w_j\left|A_{b,h,j}-\hat A_{b,h,j}\right|}{\sum_{b,h,j}m_{b,h}w_j}`, explanation: "ACT 官方代码使用 masked L1；固定 revision 中是先把 padding 误差乘零，再对完整张量 mean。本课程把分母也限制到有效元素，作为跨可变长度 batch 保持 loss 尺度的工程建议，不冒充官方代码逐字复现。" },
+          { label: "检查 padding invariance", latex: String.raw`\mathcal L_{\mathrm{rec}}(\mathbf A_{\mathrm{pad}}=0)=\mathcal L_{\mathrm{rec}}(\mathbf A_{\mathrm{pad}}=10^6)\quad\text{if }m_{\mathrm{pad}}=0`, explanation: "只改变无效 padding 数值时，masked loss 应完全不变。这是比肉眼检查 shape 更可靠的单元测试。" },
+        ],
+        workedExample: {
+          title: "三步有效动作加一个错误 padding",
+          setup: "取 dₐ=1、H=4，有效位置误差为 [0.1,−0.2,0]，最后一个 padding 误差故意设为 10，mask=[1,1,1,0]。",
+          steps: ["有效绝对误差之和为 0.1+0.2+0=0.3。", "按有效元素归一化的 L1=0.3/3=0.1；官方代码风格的完整张量 mean 为 0.3/4=0.075。", "若忘记 mask，L1=(0.3+10)/4=2.575。"],
+          result: "mask 决定 padding 是否贡献误差，reduction convention 决定不同有效长度样本的 loss 尺度；两者必须分别记录。",
+        },
+        implementation: "数据集同时返回 actions:[B,16,7] 与 action_valid:[B,16]；训练第一批次断言广播后的 mask shape，加入随机修改 padding 后 loss 不变的测试，并明确记录是 full-tensor mean 还是 valid-only mean。",
+      },
+      {
+        title: "按物理执行时刻做 Temporal Ensemble",
+        question: "为什么三个数组中的不同下标可能对应同一个应该执行的动作？",
+        steps: [
+          { label: "先把数组下标还原成执行时刻", latex: String.raw`\tau=t+h\Delta t_a,\qquad \hat{\mathbf a}_{t\rightarrow\tau}=\hat{\mathbf A}_{t}[h]`, explanation: "query t 的第 h 项属于物理时刻 τ，而不是永远从抵达客户端后的“现在”开始。晚到 chunk 必须先跳过属于过去的前缀。" },
+          { label: "收集所有指向同一 τ 的候选", latex: String.raw`\mathcal C_\tau=\{\hat{\mathbf a}_{t\rightarrow\tau}\mid t\le\tau<t+H\Delta t_a\}`, explanation: "t=10、11、12 发出的三个 chunk，都可能包含执行时刻 12 的预测。融合发生在 Cτ 内，不能对同一数组的相邻元素做普通低通。" },
+          { label: "先复现 ACT 官方代码的候选顺序", latex: String.raw`w_i^{\mathrm{official}}=e^{-ki},\qquad i=0\ \text{表示候选数组中最旧的 query}`, explanation: "ACT 官方仓库固定 revision 742c753 中，候选按 query_time 从旧到新排列，再对 arange(N) 做指数衰减，因此旧预测权重更高。权重含义依赖数组顺序，不能只抄 exp(−ki)。" },
+          { label: "再把年龄衰减写成另一种显式变体", latex: String.raw`\bar{\mathbf a}_\tau^{\mathrm{age}}=\frac{\sum_t e^{-k(\tau-t)}\hat{\mathbf a}_{t\rightarrow\tau}}{\sum_t e^{-k(\tau-t)}}`, explanation: "本站 Toy 还计算“旧预测随年龄衰减”的对照变体。它不是官方代码同义改写；两者都必须声明候选顺序，并用固定输入输出测试锁定。" },
+        ],
+        workedExample: {
+          title: "三个 query 对执行时刻 12 的预测",
+          setup: "query 10、11、12 分别预测 0.20、0.26、0.35，取 k=1，年龄为 2、1、0。",
+          steps: ["官方顺序权重为 1、e⁻¹、e⁻²，融合结果约 0.2282。", "年龄衰减变体权重为 e⁻²、e⁻¹、1，融合结果约 0.3145。", "两者候选完全相同，差异只来自明确声明的权重方向。"],
+          result: "先复现固定 revision 的 0.2282，再把 0.3145 作为对照；若 query_time 错移一格，候选集合本身也会改变。",
+        },
+        implementation: "每个候选保留 observation_time、query_time、offset 与 execute_time。下一章的 action-chunking 会继续加入 TTL、异步队列和只执行前 E 步的规则。",
+      },
+    ],
+    formula: { latex: String.raw`z=\mu_\phi+\sigma_\phi\odot\epsilon,\ \epsilon\sim\mathcal N(0,I),\qquad \bar a_\tau=\frac{\sum_i w_i\hat a_{i\rightarrow\tau}}{\sum_iw_i}`, symbols: [
+      { symbol: "μ,σ", meaning: "训练期 style encoder 的后验参数。" }, { symbol: "ε", meaning: "重参数化噪声。" }, { symbol: "τ", meaning: "真实执行时刻。" }, { symbol: "âᵢ→τ", meaning: "候选数组第 i 项对执行时刻 τ 的预测。" }, { symbol: "wᵢ", meaning: "显式声明候选顺序后定义的融合权重；不同 convention 不可混写。" },
+    ], note: "已核对 ACT 官方仓库 742c753：推理 z=0；reconstruction 使用 masked L1 后对完整张量 mean；temporal aggregation 对从旧到新排列的候选使用 exp(−k·arange)。本站另给 valid-only reduction 与年龄衰减作为显式工程对照，不能把二者写成官方原实现。" },
+    practice: { title: "CVAE、mask 与重叠预测算术", summary: "运行脚本，先核对 KL 和两种明确命名的融合 convention，再改错时间索引。", steps: ["运行 python public/labs/act_cvae_mechanics.py。", "复算 KL。", "画出三条重叠 chunk，并分别核对 official-order 与 age-decay 输出。", "比较 valid-only/full-tensor L1 reduction。", "将 query_time 偏移一格并观察融合错误。"], acceptance: ["能解释训练/推理差异。", "两种融合值都与手算一致且不会混称官方实现。", "能说明 mask 与 reduction 是两个独立选择。", "能定位时间错位来源。"], status: "已验证", code: "python public/labs/act_cvae_mechanics.py", expected: ["输出 KL、三个同执行时刻候选、两套加权动作和两种 masked L1，最后 ACT MECHANICS PASS。"], debugging: ["KL 为负通常是公式符号错。", "融合候选数错先核对 query_time+offset。", "新旧权重方向相反时先核候选排列，不要先改指数符号。"] },
     pitfalls: ["推理时调用训练后验 encoder", "padding 动作参与 loss", "把 temporal ensemble 当简单平滑", "晚到 chunk 从索引 0 重放", "ACT/VLA 使用不同物理动作接口"],
     review: ["ACT 的 style encoder 为什么推理时不能使用？", "temporal ensemble 融合的是哪些动作？", "ACT 成功能证明什么、不能证明什么？"],
     completion: "独立画出训练/推理数据流，运行并改坏一次 temporal ensemble Toy，再用同一个 PolicyResponse schema 包装 ACT 与 VLA 输出。",
-    sources: [{ title: "ACT paper", url: "https://arxiv.org/abs/2304.13705", role: "原论文" }, { title: "ACT official code", url: "https://github.com/tonyzhaozh/act", role: "实现参照" }],
+    sources: [{ title: "ACT paper", url: "https://arxiv.org/abs/2304.13705", role: "原论文" }, { title: "ACT official code · 742c753", url: "https://github.com/tonyzhaozh/act/tree/742c753c0d4a5d87076c8f69e5628c79a8cc5488", role: "固定实现参照" }],
     visual: "act",
   },
 

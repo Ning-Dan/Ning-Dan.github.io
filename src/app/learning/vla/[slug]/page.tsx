@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChapterBridge, ChapterPager } from "@/components/vla/ChapterBridge";
+import { DerivationSequence } from "@/components/vla/DerivationSequence";
 import { FrontierMatrix, WorldModelPatterns } from "@/components/vla/FrontierMatrix";
 import { GuidedWalkthrough } from "@/components/vla/GuidedWalkthrough";
 import { LessonVisual } from "@/components/vla/LessonVisuals";
@@ -33,31 +36,42 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
   const timePlan = lesson.timePlan || studyPlan?.timePlan;
 
   return (
-    <div className="site-shell">
-      <section className="container page-hero">
-        <p className="eyebrow">
-          Module {String(courseModule.index).padStart(2, "0")} · {courseModule.phase} · 建议学习预算 {courseModule.hours}
-        </p>
-        <h1 className="page-title">{courseModule.title}</h1>
-        <p className="page-intro">{courseModule.subtitle}。{lesson.lead}</p>
-        <div className={`study-mode-card ${guidance.tone}`}>
-          <strong>{guidance.label}</strong>
-          <span>{guidance.instruction}</span>
+    <div className="site-shell lesson-page">
+      <section className="container lesson-signal-hero">
+        <p className="course-breadcrumb"><Link href="/learning/vla">VLA 课程地图</Link><span>/</span>{courseModule.phase}</p>
+        <div className="lesson-signal-grid">
+          <div className="lesson-module-index" aria-label={`第 ${courseModule.index} 章`}>
+            <span>MODULE</span>
+            <strong>{String(courseModule.index).padStart(2, "0")}</strong>
+            <small>{String(courseModule.index + 1).padStart(2, "0")} / {modules.length}</small>
+          </div>
+          <div className="lesson-hero-copy">
+            <p className="eyebrow">{courseModule.phase} · 建议学习预算 {courseModule.hours}</p>
+            <h1 className="page-title">{courseModule.title}</h1>
+            <p className="page-intro"><strong>{courseModule.subtitle}</strong>{lesson.lead}</p>
+          </div>
+          <aside className={`study-mode-card ${guidance.tone}`}>
+            <span>{guidance.label}</span>
+            <strong>{courseModule.outcome}</strong>
+            <p>{guidance.instruction}</p>
+          </aside>
         </div>
       </section>
+
+      <ChapterBridge slug={slug} />
 
       <div className="container lesson-layout">
         <nav className="lesson-toc" aria-label="本章目录">
           <strong>本章目录</strong>
           {(objectives || timePlan) && <a href="#route">0. 学习路线</a>}
-          <a href="#practice">1. 跟着做</a>
-          <a href="#theory">2. 原理备查</a>
+          <a href="#theory">1. 原理主线</a>
           {lesson.deepDive?.map((section, index) => (
             <a className="toc-sub" href={`#deep-dive-${index}`} key={section.title}>
               {section.title.replace(/^\d+\.\s*/, "")}
             </a>
           ))}
-          <a href="#math">3. 数学备查</a>
+          <a href="#math">2. 推导与数值例</a>
+          <a href="#practice">3. 跟着做</a>
           <a href="#pitfalls">4. 失效模式</a>
           <a href="#sources">5. 来源与答案</a>
         </nav>
@@ -89,8 +103,42 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
             </section>
           )}
 
+          <section className="lesson-section" id="theory">
+            <h2>1. 完整原理与直觉</h2>
+            {lesson.theory.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            {lesson.deepDive?.map((section, index) => (
+              <div className="deep-dive" id={`deep-dive-${index}`} key={section.title}>
+                <h3>{section.title}</h3>
+                {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+                {section.takeaways && (
+                  <div className="key-takeaways">
+                    <strong>这一节必须带走</strong>
+                    <ul>{section.takeaways.map((item) => <li key={item}>{item}</li>)}</ul>
+                  </div>
+                )}
+              </div>
+            ))}
+            <LessonVisual type={lesson.visual} />
+            {slug === "frontier-and-deployment" && (
+              <><h3>前沿问题—改进—证据—缺陷矩阵</h3><FrontierMatrix /></>
+            )}
+            {slug === "world-models" && (
+              <><h3>五种组合方式</h3><WorldModelPatterns /></>
+            )}
+          </section>
+
+          <section className="lesson-section" id="math">
+            <h2>2. 核心推导与数值例</h2>
+            {lesson.derivations && <DerivationSequence derivations={lesson.derivations} />}
+            {lesson.derivations && <h3>公式速查</h3>}
+            <MathFormula latex={lesson.formula.latex} symbols={lesson.formula.symbols} />
+            {lesson.formula.note && (
+              <div className="insight"><strong>审校注记</strong><span>{lesson.formula.note}</span></div>
+            )}
+          </section>
+
           <section className="lesson-section" id="practice">
-            <h2>1. 跟着做：从第一步做到可解释的结果</h2>
+            <h2>3. 跟着做：把本章产物交给下一章</h2>
             {walkthrough ? (
               <>
                 <GuidedWalkthrough walkthrough={walkthrough} status={lesson.practice.status} />
@@ -116,38 +164,6 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
                 )}
                 <ol>{lesson.practice.steps.map((step) => <li key={step}>{step}</li>)}</ol>
               </div>
-            )}
-          </section>
-
-          <section className="lesson-section" id="theory">
-            <h2>2. 完整原理与直觉备查</h2>
-            {lesson.theory.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-            {lesson.deepDive?.map((section, index) => (
-              <div className="deep-dive" id={`deep-dive-${index}`} key={section.title}>
-                <h3>{section.title}</h3>
-                {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-                {section.takeaways && (
-                  <div className="key-takeaways">
-                    <strong>这一节必须带走</strong>
-                    <ul>{section.takeaways.map((item) => <li key={item}>{item}</li>)}</ul>
-                  </div>
-                )}
-              </div>
-            ))}
-            <LessonVisual type={lesson.visual} />
-            {slug === "frontier-and-deployment" && (
-              <><h3>前沿问题—改进—证据—缺陷矩阵</h3><FrontierMatrix /></>
-            )}
-            {slug === "world-models" && (
-              <><h3>五种组合方式</h3><WorldModelPatterns /></>
-            )}
-          </section>
-
-          <section className="lesson-section" id="math">
-            <h2>3. 数学骨架备查</h2>
-            <MathFormula latex={lesson.formula.latex} symbols={lesson.formula.symbols} />
-            {lesson.formula.note && (
-              <div className="insight"><strong>审校注记</strong><span>{lesson.formula.note}</span></div>
             )}
           </section>
 
@@ -202,6 +218,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
           </div>
         </aside>
       </div>
+      <ChapterPager slug={slug} />
     </div>
   );
 }

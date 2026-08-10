@@ -140,6 +140,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
+        <a className="skip-link" href="#main-content">跳到正文</a>
         <LocaleProvider config={runtimeI18n}>
           <Navigation
             items={config.navigation}
@@ -149,7 +150,7 @@ export default function RootLayout({
             itemsByLocale={navigationByLocale}
             siteTitleByLocale={siteTitleByLocale}
           />
-          <main className="min-h-screen pt-16 lg:pt-20">
+          <main className="site-main min-h-screen pt-16 lg:pt-20" id="main-content">
             {children}
           </main>
           <Footer

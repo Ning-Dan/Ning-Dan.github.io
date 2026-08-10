@@ -1,5 +1,22 @@
 import { supplementalLessonContent } from "@/lib/supplementalLessonContent";
 
+export type LessonDerivation = {
+  title: string;
+  question: string;
+  steps: {
+    label: string;
+    latex: string;
+    explanation: string;
+  }[];
+  workedExample: {
+    title: string;
+    setup: string;
+    steps: string[];
+    result: string;
+  };
+  implementation: string;
+};
+
 export type LessonDetail = {
   lead: string;
   objectives?: string[];
@@ -15,6 +32,7 @@ export type LessonDetail = {
     paragraphs: string[];
     takeaways?: string[];
   }[];
+  derivations?: LessonDerivation[];
   formula: {
     latex: string;
     symbols: { symbol: string; meaning: string }[];
