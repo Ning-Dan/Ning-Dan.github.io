@@ -9,6 +9,7 @@
 - π₀.₅、Flow Matching、VLA 发展史、世界模型与前沿方向
 - 公式逐项注释、原理图解、失效模式与自测
 - 13 个可下载且可直接运行的 Python 最小实验
+- 三门按原课顺序整理的中文课程：MIT Diffusion/Flow、Stanford CS336 与 Berkeley CS285
 
 ## 本地验证
 
@@ -33,3 +34,5 @@ python public/labs/toy_behavior_cloning.py
 ## License
 
 本项目保留 PRISM 原项目的 MIT License 与版权声明。
+
+课程讲义、slides、录像和作业材料仍归原作者所有；不同课程的署名、许可和改编边界见 [THIRD_PARTY_COURSES.md](./THIRD_PARTY_COURSES.md)，原始资料到本站章节的核对记录见 [COURSE_SOURCE_AUDIT.md](./COURSE_SOURCE_AUDIT.md)。

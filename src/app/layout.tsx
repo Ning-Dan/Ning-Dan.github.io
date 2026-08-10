@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s | ${config.site.title}`,
     },
     description: config.site.description,
-    keywords: ['运动控制', 'VLA', '具身智能', '世界模型', '机器人学习'],
+    keywords: ['运动控制', 'VLA', '具身智能', '世界模型', '机器人学习', 'Diffusion Models', 'Flow Matching', 'Language Models', 'Deep Reinforcement Learning'],
     authors: [{ name: config.author.name }],
     creator: config.author.name,
     publisher: config.author.name,

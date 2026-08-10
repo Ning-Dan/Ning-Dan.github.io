@@ -1,11 +1,38 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { openCourses } from "@/lib/openCourses";
 
-export const metadata: Metadata = { title: "学习中心", description: "VLA、视觉感知与 model-based control 的系统学习路线。" };
+export const metadata: Metadata = { title: "学习中心", description: "VLA、视觉感知、Diffusion、语言模型与深度强化学习的系统课程。" };
+
+const openCourseMeta: Record<string, { subtitle: string; className: string }> = {
+  "diffusion-flow": { subtitle: "MIT 6.S184 / 6.S975 · IAP 2026", className: "diffusion" },
+  cs336: { subtitle: "Stanford · Spring 2026", className: "cs336" },
+  cs285: { subtitle: "UC Berkeley · Fall 2019", className: "cs285" },
+};
+
+const sourceCourseTracks = openCourses.map((course) => {
+  const labs = new Set(
+    course.chapters.flatMap((chapter) => [
+      ...(chapter.lab?.file ? [chapter.lab.file] : []),
+      ...chapter.sources.filter((source) => source.kind === "code" && source.url.startsWith("/labs/")).map((source) => source.url),
+    ]),
+  ).size;
+  const meta = openCourseMeta[course.slug] ?? { subtitle: course.provider, className: "foundation" };
+  return {
+    status: `ACTIVE · ${course.chapters.length} CHAPTERS · ${labs} LABS`,
+    title: course.title,
+    subtitle: meta.subtitle,
+    description: course.description,
+    href: `/learning/${course.slug}`,
+    cta: "进入完整课程 →",
+    className: meta.className,
+  };
+});
 
 const tracks = [
   { status: "ACTIVE · 18 CHAPTERS · 13 LABS", title: "Vision-Language-Action", subtitle: "从控制工程师的视角理解 VLA", description: "数学地基、ACT、Transformer 与动作表示、Diffusion / Flow、π₀.₅、后训练、数据评估和控制系统集成。", href: "/learning/vla", cta: "进入完整课程 →", className: "active" },
   { status: "ACTIVE · 12 CHAPTERS", title: "Visual Perception", subtitle: "为机器人建立可靠的视觉状态", description: "从 RGB-D 成像、标定与点云开始，贯通检测分割、经典几何法、学习法 6D 位姿估计、ICP 精配准与机器人抓取闭环。", href: "/learning/visual-perception", cta: "进入完整课程 →", className: "visual" },
+  ...sourceCourseTracks,
   { status: "FOUNDATION", title: "Model-based Control", subtitle: "把已有经验整理成可复用知识", description: "动力学、轨迹优化、MPC、阻抗控制、WBC 与安全约束，将作为连接学习策略和真实机器人的基础层。", href: "/learning#roadmap", cta: "规划中", className: "foundation" },
 ];
 
